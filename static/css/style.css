@@ -44,6 +44,17 @@ header {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.header-left {
+    flex: 1;
+}
+
 header h1 {
     font-size: 2rem;
     margin-bottom: 0.5rem;
@@ -56,6 +67,39 @@ header h1 {
 .subtitle {
     color: var(--text-secondary);
     font-size: 0.95rem;
+}
+
+/* Language Switcher */
+.language-switcher {
+    display: flex;
+    align-items: center;
+}
+
+#language-select {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+}
+
+#language-select:hover {
+    border-color: var(--accent-primary);
+}
+
+#language-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+#language-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 /* Main Content Layout */

@@ -1,0 +1,99 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-22 18:33+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+#: editor/templates/editor/index.html:9
+msgid "Self-Building App - Code Editor"
+msgstr "自己構築アプリ - コードエディタ"
+
+#: editor/templates/editor/index.html:18
+msgid "Self-Building App"
+msgstr "自己構築アプリ"
+
+#: editor/templates/editor/index.html:19
+msgid "AI-Powered Code Editor - Request features, watch them come to life"
+msgstr "AI搭載コードエディタ - 機能をリクエストして、実現する様子を見よう"
+
+#: editor/templates/editor/index.html:46
+msgid "filename.py"
+msgstr "ファイル名.py"
+
+#: editor/templates/editor/index.html:49
+msgid "Save"
+msgstr "保存"
+
+#: editor/templates/editor/index.html:50
+msgid "Run"
+msgstr "実行"
+
+#: editor/templates/editor/index.html:53
+msgid "Welcome to Self-Building App!"
+msgstr "自己構築アプリへようこそ！"
+
+#: editor/templates/editor/index.html:54
+msgid "This is a Python code editor with AI-powered feature development."
+msgstr "これはAI搭載の機能開発を備えたPythonコードエディタです。"
+
+#: editor/templates/editor/index.html:57
+msgid "A simple hello world function"
+msgstr "シンプルなハローワールド関数"
+
+#: editor/templates/editor/index.html:58
+msgid "Hello, World!"
+msgstr "こんにちは、世界！"
+
+#: editor/templates/editor/index.html:59
+msgid "Welcome to the Self-Building App!"
+msgstr ""
+
+#: editor/templates/editor/index.html:71
+msgid "AI Assistant"
+msgstr "AIアシスタント"
+
+#: editor/templates/editor/index.html:76
+msgid "AI Assistant:"
+msgstr "AIアシスタント:"
+
+#: editor/templates/editor/index.html:77
+msgid ""
+"Hello! I'm your AI assistant. Tell me what features you'd like to add to "
+"this application, and I'll help develop them for you."
+msgstr ""
+
+#: editor/templates/editor/index.html:82
+msgid "Describe the feature you want to add..."
+msgstr "追加したい機能を説明してください..."
+
+#: editor/templates/editor/index.html:83
+msgid "Send"
+msgstr "送信"
+
+#: selfbuilding_app/settings.py:114
+msgid "English"
+msgstr "英語"
+
+#: selfbuilding_app/settings.py:115
+msgid "Czech"
+msgstr "チェコ語"
+
+#: selfbuilding_app/settings.py:116
+msgid "Japanese"
+msgstr "日本語"
+
+#: selfbuilding_app/settings.py:117
+msgid "Russian"
+msgstr "ロシア語"
