@@ -71,16 +71,14 @@ environment where users can write and save code."""
                         "content": msg.get('message', '')
                     })
             
+            # Add the current user message
+            current_message = user_message
+            
             # Add code context if provided
             if code_context:
-                context_msg = f"\n\n[Current code in editor]:\n```\n{code_context}\n```"
-                if messages[-1]["role"] == "user":
-                    messages[-1]["content"] += context_msg
-                else:
-                    messages.append({"role": "user", "content": context_msg})
+                current_message += f"\n\n[Current code in editor]:\n```\n{code_context}\n```"
             
-            # Add the current user message
-            messages.append({"role": "user", "content": user_message})
+            messages.append({"role": "user", "content": current_message})
             
             # Call OpenAI API
             response = self.client.chat.completions.create(

@@ -24,7 +24,7 @@ def chat(request):
                 }, status=400)
             
             # Get recent conversation history for context
-            recent_messages = ChatMessage.objects.all()[:10]
+            recent_messages = ChatMessage.objects.order_by('-timestamp')[:10]
             conversation_history = [
                 {
                     'message': msg.message,
@@ -80,9 +80,19 @@ def chat(request):
 
 def _is_feature_request(message):
     """Simple heuristic to detect if a message is a feature request"""
-    keywords = ['add', 'implement', 'create', 'feature', 'build', 'make', 'want', 'need', 'can you']
+    # More specific patterns for feature requests
+    feature_patterns = [
+        'add feature', 'add a feature', 'add the feature',
+        'implement', 'create a', 'create an',
+        'build a', 'build an',
+        'can you add', 'could you add',
+        'can you create', 'could you create',
+        'can you implement', 'could you implement',
+        'want to add', 'need to add',
+        'would like to add', 'would like a'
+    ]
     message_lower = message.lower()
-    return any(keyword in message_lower for keyword in keywords)
+    return any(pattern in message_lower for pattern in feature_patterns)
 
 def save_code(request):
     """Handle saving code from the editor to database"""
