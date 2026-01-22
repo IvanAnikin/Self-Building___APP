@@ -1,13 +1,11 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 import json
 
 def index(request):
     """Main view for the editor and chatbot interface"""
     return render(request, 'editor/index.html')
 
-@csrf_exempt
 def chat(request):
     """Handle chat messages from the user"""
     if request.method == 'POST':
@@ -30,7 +28,6 @@ def chat(request):
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'}, status=405)
 
-@csrf_exempt
 def save_code(request):
     """Handle saving code from the editor"""
     if request.method == 'POST':

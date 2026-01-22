@@ -2,6 +2,27 @@
 const editor = document.getElementById('editor');
 const filenameInput = document.getElementById('filename');
 
+// Get CSRF token from Django template
+function getCSRFToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    // Fallback to cookie method
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 10) === 'csrftoken=') {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 // Handle tab key in editor
 editor.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
@@ -92,6 +113,7 @@ async function sendMessage() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({ message: message })
         });
@@ -136,6 +158,7 @@ document.getElementById('saveBtn').addEventListener('click', async function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({ code: code, filename: filename })
         });
