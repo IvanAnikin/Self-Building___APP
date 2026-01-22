@@ -112,7 +112,7 @@ async function sendMessage() {
         const codeContext = editor.value.trim();
         
         // Send message to backend
-        const response = await fetch('/api/chat/', {
+        const response = await fetch(window.API_URLS.chat, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ document.getElementById('saveBtn').addEventListener('click', async function() {
     const filename = filenameInput.value;
     
     try {
-        const response = await fetch('/api/save/', {
+        const response = await fetch(window.API_URLS.save, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
