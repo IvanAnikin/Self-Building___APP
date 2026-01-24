@@ -232,6 +232,21 @@ Self-Building___APP/
 │ created_at          │
 │ completed_at        │
 └─────────────────────┘
+
+┌─────────────────────┐
+│  CodeExecution      │
+├─────────────────────┤
+│ id (PK)             │
+│ code                │
+│ language            │
+│ filename            │
+│ stdout              │
+│ stderr              │
+│ returncode          │
+│ status              │
+│ error_message       │
+│ executed_at         │
+└─────────────────────┘
 ```
 
 ### Model Details
@@ -297,12 +312,42 @@ Self-Building___APP/
 
 ---
 
+#### CodeExecution Model
+**Purpose:** Track code execution history, results, and debugging information
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | BigAutoField | Primary Key | Auto-incrementing identifier |
+| code | TextField | - | The code that was executed |
+| language | CharField | max_length=50, default='python' | Programming language |
+| filename | CharField | max_length=255, default='untitled.txt' | File name |
+| stdout | TextField | blank=True, default='' | Standard output from execution |
+| stderr | TextField | blank=True, default='' | Standard error from execution |
+| returncode | IntegerField | default=0 | Process return code (0=success) |
+| status | CharField | max_length=20, choices | Execution status |
+| error_message | TextField | blank=True, default='' | Error details if execution failed |
+| executed_at | DateTimeField | auto_now_add=True | Execution timestamp |
+
+**Status Choices:**
+- `success` - Execution completed successfully
+- `error` - Execution failed with errors
+
+**Meta Options:**
+- `ordering = ['-executed_at']` - Most recent executions first
+
+**File Location:** `editor/models.py` (Lines 47-67)
+
+---
+
 ### Database Operations
 
 **Migration Files:**
 - Initial migration: `editor/migrations/0001_initial.py`
-- Created: January 22, 2026
-- Includes all three models with proper indexing
+  - Created: January 22, 2026
+  - Includes ChatMessage, CodeSnippet, and FeatureRequest models
+- Phase 3 migration: `editor/migrations/0002_codeexecution.py`
+  - Created: January 24, 2026
+  - Adds CodeExecution model for tracking code execution history
 
 **Common Queries:**
 ```python
@@ -526,7 +571,120 @@ def index(request):
 - Designed for future file system or database persistence
 - No actual file writing (yet)
 
-**File Location:** `editor/views.py` (Lines 27-45)
+**File Location:** `editor/views.py` (Lines 135-183)
+
+---
+
+#### 4. `execute_code(request)`
+
+**Purpose:** Execute code in sandboxed environment and return results
+
+**HTTP Method:** POST
+
+**Request Payload:**
+```json
+{
+    "code": "print('Hello, World!')",
+    "language": "python",
+    "filename": "test.py"
+}
+```
+
+**Response (Success):**
+```json
+{
+    "status": "success",
+    "stdout": "Hello, World!\n",
+    "stderr": "",
+    "returncode": 0,
+    "error": null,
+    "execution_id": 1
+}
+```
+
+**Response (Execution Error):**
+```json
+{
+    "status": "error",
+    "stdout": "",
+    "stderr": "Traceback...\nZeroDivisionError: division by zero",
+    "returncode": 1,
+    "error": null,
+    "execution_id": 2
+}
+```
+
+**HTTP Status Codes:**
+- 200: Request processed (check status field for execution result)
+- 400: Bad request (empty code)
+- 500: Server error during execution
+
+**Implementation Details:**
+- Uses CodeExecutor class for sandboxed execution
+- Supports Python 3 and JavaScript (Node.js)
+- 5-second timeout protection
+- Output truncation at 10,000 characters
+- Saves all executions to CodeExecution model
+- Returns execution ID for tracking
+
+**File Location:** `editor/views.py` (Lines 185-260)
+
+---
+
+### Code Executor Module (`editor/code_executor.py`)
+
+**Purpose:** Provide secure, sandboxed code execution with timeout and resource limits
+
+#### CodeExecutor Class
+
+**Constructor Parameters:**
+- `timeout` (int): Maximum execution time in seconds (default: 5)
+- `max_output_length` (int): Maximum output length (default: 10,000)
+
+**Main Methods:**
+
+##### `execute(code: str, language: str) -> Dict[str, Any]`
+
+Executes code in the specified language and returns results.
+
+**Parameters:**
+- `code`: Source code to execute
+- `language`: Programming language ('python', 'py', 'javascript', 'js', 'node')
+
+**Returns:**
+```python
+{
+    'status': 'success' or 'error',
+    'stdout': 'standard output string',
+    'stderr': 'standard error string',
+    'returncode': 0,  # or error code
+    'error': None  # or error message string
+}
+```
+
+**Supported Languages:**
+- Python 3 (via `python3` command)
+- JavaScript (via `node` command, if Node.js is installed)
+
+**Security Features:**
+1. **Temporary File Isolation**: Code written to temp files, auto-deleted after execution
+2. **Timeout Protection**: Processes terminated after timeout expires
+3. **Output Truncation**: Long outputs truncated with warning message
+4. **Subprocess Sandboxing**: Code runs in separate process with limited environment
+5. **Error Handling**: Comprehensive error catching and reporting
+
+**Implementation Details:**
+- Uses `subprocess.run()` with timeout
+- Creates temporary files with `tempfile.NamedTemporaryFile()`
+- Cleans up temp files in finally block
+- Sets `PYTHONDONTWRITEBYTECODE=1` for Python to prevent .pyc files
+
+**File Location:** `editor/code_executor.py`
+
+**Global Instance:**
+```python
+code_executor = CodeExecutor(timeout=5, max_output_length=10000)
+```
 
 ---
 
@@ -879,6 +1037,107 @@ curl -X POST http://localhost:8000/api/save/ \
   -H "Content-Type: application/json" \
   -H "X-CSRFToken: <token>" \
   -d '{"code":"print(\"test\")","filename":"test.py"}'
+```
+
+---
+
+### 3. Execute Code API
+
+**Endpoint:** `/api/execute/`
+
+**Method:** POST
+
+**Content-Type:** application/json
+
+**Request Headers:**
+```
+Content-Type: application/json
+X-CSRFToken: <token>
+```
+
+**Request Body:**
+```json
+{
+    "code": "print('Hello, World!')\nprint(2 + 2)",
+    "language": "python",
+    "filename": "test.py"
+}
+```
+
+**Success Response (200):**
+```json
+{
+    "status": "success",
+    "stdout": "Hello, World!\n4\n",
+    "stderr": "",
+    "returncode": 0,
+    "error": null,
+    "execution_id": 1
+}
+```
+
+**Error Response - Execution Failed (200):**
+```json
+{
+    "status": "error",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/tmp/xyz.py\", line 1\n    x = 10 / 0\nZeroDivisionError: division by zero",
+    "returncode": 1,
+    "error": null,
+    "execution_id": 2
+}
+```
+
+**Error Response - Empty Code (400):**
+```json
+{
+    "status": "error",
+    "error": "Code cannot be empty",
+    "stdout": "",
+    "stderr": ""
+}
+```
+
+**Error Response - Unsupported Language (200):**
+```json
+{
+    "status": "error",
+    "error": "Unsupported language: rust. Currently supported: Python, JavaScript",
+    "stdout": "",
+    "stderr": "",
+    "returncode": -1,
+    "execution_id": 3
+}
+```
+
+**Error Response - Timeout (200):**
+```json
+{
+    "status": "error",
+    "error": "Execution timeout: Code took longer than 5 seconds",
+    "stdout": "",
+    "stderr": "",
+    "returncode": -1,
+    "execution_id": 4
+}
+```
+
+**Supported Languages:**
+- `python` or `py` - Python 3 execution
+- `javascript`, `js`, or `node` - Node.js execution
+
+**Security Features:**
+- 5-second execution timeout
+- Output truncation at 10,000 characters
+- Temporary file cleanup
+- Sandboxed subprocess execution
+
+**Example cURL:**
+```bash
+curl -X POST http://localhost:8000/api/execute/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"code":"print(\"Hello\")", "language":"python", "filename":"test.py"}'
 ```
 
 ---
@@ -1455,15 +1714,18 @@ async def chat(request):
 - ✅ Database persistence of all conversations
 - ✅ Token usage tracking and monitoring
 
-### Phase 3: Code Execution (Next)
-- [ ] Sandboxed Python execution
-- [ ] Output display in UI
-- [ ] Multiple language support (Python, JavaScript, etc.)
-- [ ] Error handling and debugging
-- [ ] Timeout and resource limits
-- [ ] Real-time output streaming
+### Phase 3: Code Execution (Completed ✅)
+- [x] Sandboxed Python execution
+- [x] Output display in UI (dedicated collapsible panel)
+- [x] Multiple language support (Python 3, JavaScript/Node.js)
+- [x] Error handling and debugging (full traceback display)
+- [x] Timeout and resource limits (5-second timeout, 10KB output limit)
+- [x] CodeExecutor module with security features
+- [x] CodeExecution model for history tracking
+- [x] Comprehensive test suite (11 tests)
+- [ ] Real-time output streaming (future enhancement)
 
-### Phase 4: Self-Modification
+### Phase 4: Self-Modification (Next)
 - [ ] AI-powered code generation from natural language
 - [ ] Automated file modification in repository
 - [ ] Automated testing of new features
