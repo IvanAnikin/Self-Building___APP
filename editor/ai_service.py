@@ -51,13 +51,20 @@ environment where users can write and save code."""
         Returns:
             dict: Response with status and message
         """
+        print(f"  🧠 AI Service: process_message called")
+        print(f"     - Message length: {len(user_message)} chars")
+        print(f"     - History items: {len(conversation_history) if conversation_history else 0}")
+        print(f"     - Code context: {'Yes' if code_context else 'No'}")
+        
         if not self.enabled:
+            print(f"  ⚠️  AI Service: Not enabled, using fallback")
             return {
                 'status': 'fallback',
                 'response': self._get_fallback_response(user_message)
             }
         
         try:
+            print(f"  🔧 AI Service: Building API request...")
             # Build messages for the API
             messages = [
                 {"role": "system", "content": self.get_system_prompt()}
@@ -65,6 +72,8 @@ environment where users can write and save code."""
             
             # Add conversation history if provided
             if conversation_history:
+                history_count = len(conversation_history[-10:])
+                print(f"     - Adding {history_count} history messages")
                 for msg in conversation_history[-10:]:  # Keep last 10 messages for context
                     messages.append({
                         "role": "user" if msg.get('is_user') else "assistant",
@@ -76,11 +85,14 @@ environment where users can write and save code."""
             
             # Add code context if provided
             if code_context:
+                print(f"     - Adding code context ({len(code_context)} chars)")
                 current_message += f"\n\n[Current code in editor]:\n```\n{code_context}\n```"
             
             messages.append({"role": "user", "content": current_message})
+            print(f"     - Total messages to API: {len(messages)}")
             
             # Call OpenAI API
+            print(f"  🌐 AI Service: Calling OpenAI API (model: {self.model})...")
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -89,6 +101,8 @@ environment where users can write and save code."""
             )
             
             ai_response = response.choices[0].message.content
+            print(f"  ✅ AI Service: Received response ({len(ai_response)} chars)")
+            print(f"     - Tokens used: prompt={response.usage.prompt_tokens}, completion={response.usage.completion_tokens}, total={response.usage.total_tokens}")
             
             return {
                 'status': 'success',
@@ -96,7 +110,9 @@ environment where users can write and save code."""
             }
             
         except Exception as e:
-            print(f"AI Service Error: {str(e)}")
+            print(f"  ❌ AI Service Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
                 'status': 'error',
                 'response': self._get_fallback_response(user_message),

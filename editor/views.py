@@ -11,19 +11,29 @@ def index(request):
 
 def chat(request):
     """Handle chat messages from the user with AI integration"""
+    print("\n" + "="*80)
+    print("🔵 CHAT REQUEST RECEIVED")
+    print("="*80)
+    
     if request.method == 'POST':
         try:
+            # Parse request body
             data = json.loads(request.body)
             user_message = data.get('message', '')
-            code_context = data.get('code_context', None)  # Optional: current code from editor
+            code_context = data.get('code_context', None)
+            
+            print(f"📨 User Message: '{user_message}'")
+            print(f"📝 Code Context Included: {code_context is not None}")
             
             if not user_message:
+                print("❌ Error: Empty message received")
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Message cannot be empty'
                 }, status=400)
             
             # Get recent conversation history for context
+            print(f"🔍 Fetching conversation history...")
             recent_messages = ChatMessage.objects.order_by('-timestamp')[:10]
             conversation_history = [
                 {
@@ -32,8 +42,17 @@ def chat(request):
                 }
                 for msg in reversed(list(recent_messages))
             ]
+            print(f"📚 Found {len(conversation_history)} previous messages in history")
+            
+            # Check AI service status
+            print(f"🤖 AI Service Enabled: {ai_service.is_enabled()}")
+            if ai_service.is_enabled():
+                print(f"🔧 Using OpenAI Model: {ai_service.model}")
+            else:
+                print("⚠️  AI Service Disabled - Using Fallback Responses")
             
             # Process message with AI service
+            print(f"⚙️  Processing message with AI service...")
             ai_response_data = ai_service.process_message(
                 user_message=user_message,
                 conversation_history=conversation_history,
@@ -41,27 +60,40 @@ def chat(request):
             )
             
             response_message = ai_response_data.get('response', '')
+            ai_status = ai_response_data.get('status', 'unknown')
+            print(f"✅ AI Response Status: {ai_status}")
+            print(f"💬 AI Response (first 100 chars): {response_message[:100]}...")
             
             # Save user message to database
+            print(f"💾 Saving user message to database...")
             user_chat = ChatMessage.objects.create(
                 message=user_message,
                 response='',
                 is_user=True
             )
+            print(f"✅ User message saved (ID: {user_chat.id})")
             
             # Save AI response to database
+            print(f"💾 Saving AI response to database...")
             bot_chat = ChatMessage.objects.create(
                 message=response_message,
                 response='',
                 is_user=False
             )
+            print(f"✅ AI response saved (ID: {bot_chat.id})")
             
             # Check if this is a feature request and save it
-            if _is_feature_request(user_message):
-                FeatureRequest.objects.create(
+            is_feature_req = _is_feature_request(user_message)
+            print(f"🔍 Feature Request Detected: {is_feature_req}")
+            if is_feature_req:
+                feature = FeatureRequest.objects.create(
                     description=user_message,
                     status='pending'
                 )
+                print(f"📋 Feature request created (ID: {feature.id})")
+            
+            print(f"✅ Request completed successfully")
+            print("="*80 + "\n")
             
             return JsonResponse({
                 'status': 'success',
@@ -70,12 +102,18 @@ def chat(request):
             })
             
         except Exception as e:
-            print(f"Chat error: {str(e)}")
+            print(f"❌ ERROR in chat view: {str(e)}")
+            import traceback
+            print(f"📍 Traceback:")
+            traceback.print_exc()
+            print("="*80 + "\n")
             return JsonResponse({
                 'status': 'error',
                 'message': f'Error processing request: {str(e)}'
             }, status=400)
     
+    print("❌ Invalid request method (not POST)")
+    print("="*80 + "\n")
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'}, status=405)
 
 def _is_feature_request(message):

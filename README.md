@@ -44,12 +44,7 @@ A modern Python Django web application featuring a dark mode code editor with an
 
 3. **Configure environment variables (optional for AI features)**
    
-   Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit the `.env` file and add your OpenAI API key:
+   Edit the `.env` file (already included in repository) and add your OpenAI API key:
    ```
    OPENAI_API_KEY=your-actual-openai-api-key-here
    OPENAI_MODEL=gpt-4o-mini
@@ -87,7 +82,7 @@ A modern Python Django web application featuring a dark mode code editor with an
 - Type your message or feature request in the text area at the bottom
 - Press **Send** or hit Enter to submit your message
 - The AI assistant responds with context-aware answers
-- **With OpenAI API key**: Get intelligent, context-aware responses powered by GPT-4
+- **With OpenAI API key**: Get intelligent, context-aware responses powered by GPT-4o-mini
 - **Without API key**: Get helpful fallback responses with basic functionality
 - The assistant can:
   - Answer coding questions
@@ -135,7 +130,7 @@ Self-Building___APP/
 
 ## Technology Stack
 
-- **Backend**: Django 6.0+
+- **Backend**: Django 4.2+
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
 - **AI Integration**: OpenAI API (GPT-4o-mini)
 - **Database**: SQLite (default, can be configured for PostgreSQL/MySQL)
@@ -165,12 +160,38 @@ Tracks feature requests made by users and their implementation status.
 
 ## Future Roadmap
 
-✅ **Phase 1** (Completed) - Basic UI and chat interface  
-✅ **Phase 2** (Completed) - AI agent integration for processing feature requests  
-⏳ **Phase 3** - Automatic code generation and feature implementation  
-⏳ **Phase 4** - Code execution environment  
-⏳ **Phase 5** - User authentication and project management  
-⏳ **Phase 6** - Real-time collaboration features  
+✅ **Phase 1: Foundation** (Completed)
+- Basic code editor with tab support
+- Dark mode UI with responsive design
+- Chat interface with message history
+- Multi-language support (EN, CS, JA, RU)
+- Database models for tracking
+
+✅ **Phase 2: AI Integration** (Completed)
+- OpenAI API integration (GPT-4o-mini)
+- Context-aware intelligent responses
+- Conversation history memory
+- Feature request detection and tracking
+- Code context awareness
+- Graceful fallback mode
+
+⏳ **Phase 3: Code Execution** (Next)
+- Sandboxed Python execution environment
+- Real-time output display
+- Multiple language support
+- Error handling and debugging
+
+⏳ **Phase 4: Self-Modification**
+- AI-powered code generation
+- Automated file modification
+- Feature implementation from natural language
+- Version control integration
+
+⏳ **Phase 5: Collaboration**
+- User authentication and authorization
+- Project sharing and permissions
+- Real-time collaboration (WebSockets)
+- Code review system  
 
 ## Contributing
 

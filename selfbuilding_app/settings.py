@@ -25,14 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# For production, use environment variables. See .env.example
-# In production: SECRET_KEY = os.environ.get('SECRET_KEY')
-SECRET_KEY = 'django-insecure-)9*cof^b^kas(*^qp55ntj#p=03(o3_!klk$s$8j*(qw@sinw_'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-)9*cof^b^kas(*^qp55ntj#p=03(o3_!klk$s$8j*(qw@sinw_')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
 
 
 # Application definition
@@ -143,3 +141,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
