@@ -139,7 +139,7 @@ class CodeExecutor:
             if temp_file and os.path.exists(temp_file):
                 try:
                     os.unlink(temp_file)
-                except:
+                except (OSError, FileNotFoundError):
                     pass
     
     def _execute_javascript(self, code: str) -> Dict[str, Any]:
@@ -226,7 +226,7 @@ class CodeExecutor:
             if temp_file and os.path.exists(temp_file):
                 try:
                     os.unlink(temp_file)
-                except:
+                except (OSError, FileNotFoundError):
                     pass
 
 
