@@ -2,8 +2,9 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils import timezone
 import json
-from .models import ChatMessage, CodeSnippet, FeatureRequest
+from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
 from .ai_service import ai_service
+from .code_executor import code_executor
 
 def index(request):
     """Main view for the editor and chatbot interface"""
@@ -180,4 +181,82 @@ def save_code(request):
             }, status=400)
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'}, status=405)
+
+def execute_code(request):
+    """Handle code execution from the editor"""
+    print("\n" + "="*80)
+    print("🔵 CODE EXECUTION REQUEST RECEIVED")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            # Parse request body
+            data = json.loads(request.body)
+            code = data.get('code', '')
+            language = data.get('language', 'python')
+            filename = data.get('filename', 'untitled.txt')
+            
+            print(f"📄 Filename: {filename}")
+            print(f"🔤 Language: {language}")
+            print(f"📝 Code Length: {len(code)} characters")
+            
+            if not code.strip():
+                print("❌ Error: Empty code provided")
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Code cannot be empty',
+                    'stdout': '',
+                    'stderr': ''
+                }, status=400)
+            
+            # Execute the code
+            print(f"⚙️  Executing code...")
+            result = code_executor.execute(code, language)
+            
+            print(f"✅ Execution Status: {result['status']}")
+            print(f"📤 Return Code: {result.get('returncode', 'N/A')}")
+            
+            # Save execution record to database
+            print(f"💾 Saving execution record to database...")
+            execution = CodeExecution.objects.create(
+                code=code,
+                language=language,
+                filename=filename,
+                stdout=result.get('stdout', ''),
+                stderr=result.get('stderr', ''),
+                returncode=result.get('returncode', 0),
+                status=result['status'],
+                error_message=result.get('error') or ''
+            )
+            print(f"✅ Execution record saved (ID: {execution.id})")
+            
+            print(f"✅ Request completed successfully")
+            print("="*80 + "\n")
+            
+            # Return execution result
+            return JsonResponse({
+                'status': result['status'],
+                'stdout': result.get('stdout', ''),
+                'stderr': result.get('stderr', ''),
+                'returncode': result.get('returncode', 0),
+                'error': result.get('error', None),
+                'execution_id': execution.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in execute_code view: {str(e)}")
+            import traceback
+            print(f"📍 Traceback:")
+            traceback.print_exc()
+            print("="*80 + "\n")
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error executing code: {str(e)}',
+                'stdout': '',
+                'stderr': ''
+            }, status=500)
+    
+    print("❌ Invalid request method (not POST)")
+    print("="*80 + "\n")
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 

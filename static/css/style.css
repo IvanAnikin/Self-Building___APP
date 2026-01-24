@@ -387,3 +387,107 @@ header h1 {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Output Section Styling */
+.output-section {
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    height: 30%;
+    display: flex;
+    flex-direction: column;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.output-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.output-title .icon {
+    font-size: 1.2rem;
+}
+
+.output-content {
+    flex: 1;
+    padding: 15px;
+    margin: 0;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.output-content.success {
+    color: var(--accent-secondary);
+}
+
+.output-content.error {
+    color: #ff6b6b;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.btn-secondary {
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Adjust editor height when output is shown */
+.editor-section.with-output .editor {
+    height: calc(70% - 50px);
+}
+
+/* Output scrollbar styling */
+.output-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.output-content::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+.output-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.output-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}

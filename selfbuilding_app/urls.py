@@ -24,6 +24,7 @@ urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     path('api/chat/', editor_views.chat, name='chat'),
     path('api/save/', editor_views.save_code, name='save_code'),
+    path('api/execute/', editor_views.execute_code, name='execute_code'),
 ]
 
 # Language-prefixed URLs

@@ -45,3 +45,24 @@ class FeatureRequest(models.Model):
     def __str__(self):
         return f"Feature Request: {self.description[:50]}"
 
+class CodeExecution(models.Model):
+    """Store code execution history and results"""
+    code = models.TextField()
+    language = models.CharField(max_length=50, default='python')
+    filename = models.CharField(max_length=255, default='untitled.txt')
+    stdout = models.TextField(blank=True, default='')
+    stderr = models.TextField(blank=True, default='')
+    returncode = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=[
+        ('success', 'Success'),
+        ('error', 'Error'),
+    ], default='success')
+    error_message = models.TextField(blank=True, default='')
+    executed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-executed_at']
+    
+    def __str__(self):
+        return f"Execution of {self.filename} at {self.executed_at}"
+

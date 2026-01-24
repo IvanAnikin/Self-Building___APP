@@ -186,9 +186,103 @@ document.getElementById('saveBtn').addEventListener('click', async function() {
     }
 });
 
-// Run button functionality (placeholder)
-document.getElementById('runBtn').addEventListener('click', function() {
-    const code = editor.value;
-    addMessage('Code execution is coming soon! For now, your code is ready in the editor.', false);
+// Output section management
+const outputSection = document.getElementById('outputSection');
+const outputContent = document.getElementById('outputContent');
+const clearOutputBtn = document.getElementById('clearOutputBtn');
+const editorSection = document.querySelector('.editor-section');
+
+function showOutput(content, isError = false) {
+    outputSection.style.display = 'flex';
+    outputContent.textContent = content;
+    outputContent.className = 'output-content ' + (isError ? 'error' : 'success');
+    editorSection.classList.add('with-output');
+}
+
+function hideOutput() {
+    outputSection.style.display = 'none';
+    outputContent.textContent = '';
+    editorSection.classList.remove('with-output');
+}
+
+clearOutputBtn.addEventListener('click', function() {
+    hideOutput();
+});
+
+// Detect language from filename
+function detectLanguage(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const langMap = {
+        'py': 'python',
+        'js': 'javascript',
+        'mjs': 'javascript',
+        'cjs': 'javascript',
+        'node': 'javascript'
+    };
+    return langMap[ext] || 'python';
+}
+
+// Run button functionality with code execution
+document.getElementById('runBtn').addEventListener('click', async function() {
+    const code = editor.value.trim();
+    const filename = filenameInput.value || 'main.py';
+    const language = detectLanguage(filename);
+    
+    if (!code) {
+        showOutput('Error: No code to execute', true);
+        return;
+    }
+    
+    // Show execution indicator
+    showOutput(`🔄 Executing ${language} code...\n`, false);
+    addMessage(`⚙️ Running ${filename}...`, false);
+    
+    try {
+        const response = await fetch('/api/execute/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                code: code,
+                language: language,
+                filename: filename
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Display stdout
+            let output = '';
+            if (data.stdout) {
+                output += data.stdout;
+            }
+            if (!output) {
+                output = '✅ Program executed successfully (no output)';
+            }
+            showOutput(output, false);
+            addMessage(`✅ Code executed successfully!`, false);
+        } else {
+            // Display error
+            let errorOutput = '';
+            if (data.error) {
+                errorOutput += `❌ Error: ${data.error}\n\n`;
+            }
+            if (data.stderr) {
+                errorOutput += data.stderr;
+            }
+            if (data.stdout) {
+                errorOutput += '\n--- Output before error ---\n' + data.stdout;
+            }
+            showOutput(errorOutput || '❌ Unknown error occurred', true);
+            addMessage(`❌ Execution failed. Check the output panel for details.`, false);
+        }
+    } catch (error) {
+        showOutput(`❌ Error: ${error.message}`, true);
+        addMessage('❌ Error executing code.', false);
+        console.error('Error:', error);
+    }
 });
 
