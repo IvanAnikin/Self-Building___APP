@@ -35,9 +35,19 @@ class FeatureRequest(models.Model):
         ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
     ], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Phase 4: Self-modification fields
+    generated_code = models.TextField(blank=True, default='')
+    implementation_plan = models.TextField(blank=True, default='')
+    files_modified = models.JSONField(default=list, blank=True)
+    git_commit_hash = models.CharField(max_length=40, blank=True, default='')
+    error_log = models.TextField(blank=True, default='')
+    test_results = models.TextField(blank=True, default='')
     
     class Meta:
         ordering = ['-created_at']
