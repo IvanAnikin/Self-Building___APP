@@ -24,6 +24,11 @@ urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     path('api/chat/', editor_views.chat, name='chat'),
     path('api/save/', editor_views.save_code, name='save_code'),
+    path('api/execute/', editor_views.execute_code, name='execute_code'),
+    # Phase 4: Self-modification endpoints
+    path('api/features/', editor_views.list_features, name='list_features'),
+    path('api/features/analyze/', editor_views.analyze_feature, name='analyze_feature'),
+    path('api/features/implement/', editor_views.implement_feature, name='implement_feature'),
 ]
 
 # Language-prefixed URLs

@@ -2,8 +2,10 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils import timezone
 import json
-from .models import ChatMessage, CodeSnippet, FeatureRequest
+from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
 from .ai_service import ai_service
+from .code_executor import code_executor
+from .feature_implementer import feature_implementer
 
 def index(request):
     """Main view for the editor and chatbot interface"""
@@ -91,15 +93,24 @@ def chat(request):
                     status='pending'
                 )
                 print(f"📋 Feature request created (ID: {feature.id})")
+            else:
+                feature = None
             
             print(f"✅ Request completed successfully")
             print("="*80 + "\n")
             
-            return JsonResponse({
+            response_data = {
                 'status': 'success',
                 'response': response_message,
                 'ai_enabled': ai_service.is_enabled()
-            })
+            }
+            
+            # Include feature request ID if one was created
+            if feature:
+                response_data['feature_request_id'] = feature.id
+                response_data['is_feature_request'] = True
+            
+            return JsonResponse(response_data)
             
         except Exception as e:
             print(f"❌ ERROR in chat view: {str(e)}")
@@ -121,13 +132,15 @@ def _is_feature_request(message):
     # More specific patterns for feature requests
     feature_patterns = [
         'add feature', 'add a feature', 'add the feature',
+        'add a ', 'add an ', 'add some',
         'implement', 'create a', 'create an',
         'build a', 'build an',
         'can you add', 'could you add',
         'can you create', 'could you create',
         'can you implement', 'could you implement',
         'want to add', 'need to add',
-        'would like to add', 'would like a'
+        'would like to add', 'would like a',
+        'i want', 'i need'
     ]
     message_lower = message.lower()
     return any(pattern in message_lower for pattern in feature_patterns)
@@ -181,3 +194,285 @@ def save_code(request):
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'}, status=405)
 
+def execute_code(request):
+    """Handle code execution from the editor"""
+    print("\n" + "="*80)
+    print("🔵 CODE EXECUTION REQUEST RECEIVED")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            # Parse request body
+            data = json.loads(request.body)
+            code = data.get('code', '')
+            language = data.get('language', 'python')
+            filename = data.get('filename', 'untitled.txt')
+            
+            print(f"📄 Filename: {filename}")
+            print(f"🔤 Language: {language}")
+            print(f"📝 Code Length: {len(code)} characters")
+            
+            if not code.strip():
+                print("❌ Error: Empty code provided")
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Code cannot be empty',
+                    'stdout': '',
+                    'stderr': ''
+                }, status=400)
+            
+            # Execute the code
+            print(f"⚙️  Executing code...")
+            result = code_executor.execute(code, language)
+            
+            print(f"✅ Execution Status: {result['status']}")
+            print(f"📤 Return Code: {result.get('returncode', 'N/A')}")
+            
+            # Save execution record to database
+            print(f"💾 Saving execution record to database...")
+            execution = CodeExecution.objects.create(
+                code=code,
+                language=language,
+                filename=filename,
+                stdout=result.get('stdout', ''),
+                stderr=result.get('stderr', ''),
+                returncode=result.get('returncode', 0),
+                status=result['status'],
+                error_message=result.get('error') or ''
+            )
+            print(f"✅ Execution record saved (ID: {execution.id})")
+            
+            print(f"✅ Request completed successfully")
+            print("="*80 + "\n")
+            
+            # Return execution result
+            return JsonResponse({
+                'status': result['status'],
+                'stdout': result.get('stdout', ''),
+                'stderr': result.get('stderr', ''),
+                'returncode': result.get('returncode', 0),
+                'error': result.get('error', None),
+                'execution_id': execution.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in execute_code view: {str(e)}")
+            import traceback
+            print(f"📍 Traceback:")
+            traceback.print_exc()
+            print("="*80 + "\n")
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error executing code: {str(e)}',
+                'stdout': '',
+                'stderr': ''
+            }, status=500)
+    
+    print("❌ Invalid request method (not POST)")
+    print("="*80 + "\n")
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+def analyze_feature(request):
+    """Analyze a feature request and create implementation plan"""
+    print("\n" + "="*80)
+    print("🔵 FEATURE ANALYSIS REQUEST")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            feature_id = data.get('feature_id')
+            
+            if not feature_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature ID is required'
+                }, status=400)
+            
+            # Get the feature request
+            try:
+                feature = FeatureRequest.objects.get(id=feature_id)
+            except FeatureRequest.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature request not found'
+                }, status=404)
+            
+            print(f"📋 Analyzing feature: {feature.description[:100]}...")
+            
+            # Update status
+            feature.status = 'processing'
+            feature.save()
+            
+            # Analyze the feature
+            analysis = feature_implementer.analyze_feature_request(feature.description)
+            
+            print(f"✅ Analysis complete: Feasible={analysis.get('feasible', False)}")
+            print(f"📊 Full Analysis Result:")
+            print(json.dumps(analysis, indent=2))
+            
+            if analysis.get('feasible'):
+                # Store the entire analysis as JSON, not just the plan string
+                feature.implementation_plan = json.dumps(analysis)
+                feature.status = 'approved'
+                print(f"💾 Stored implementation plan ({len(feature.implementation_plan)} chars)")
+            else:
+                feature.error_log = analysis.get('reason', 'Analysis failed')
+                feature.status = 'failed'
+                print(f"❌ Feature marked as failed: {feature.error_log}")
+            
+            feature.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'analysis': analysis,
+                'feature_id': feature.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in analyze_feature: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error analyzing feature: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+def implement_feature(request):
+    """Generate and apply code for a feature request"""
+    print("\n" + "="*80)
+    print("🔵 FEATURE IMPLEMENTATION REQUEST")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            feature_id = data.get('feature_id')
+            approve = data.get('approve', False)
+            
+            if not feature_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature ID is required'
+                }, status=400)
+            
+            # Get the feature request
+            try:
+                feature = FeatureRequest.objects.get(id=feature_id)
+            except FeatureRequest.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature request not found'
+                }, status=404)
+            
+            print(f"🛠️  Implementing feature: {feature.description[:100]}...")
+            
+            if not feature.implementation_plan:
+                print(f"❌ No implementation plan found")
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature must be analyzed first'
+                }, status=400)
+            
+            print(f"📋 Implementation Plan (first 200 chars):")
+            print(feature.implementation_plan[:200])
+            
+            # For now, generate code preview without applying
+            # This is Phase 4 Part 1 - code generation and preview
+            # Part 2 will handle actual application of changes
+            
+            # Parse implementation plan
+            try:
+                plan_data = json.loads(feature.implementation_plan)
+                print(f"✅ Successfully parsed implementation plan")
+                print(f"📁 Files to modify: {plan_data.get('files_to_modify', [])}")
+                files_to_modify = plan_data.get('files_to_modify', [])
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"❌ JSON parsing error: {str(e)}")
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Invalid implementation plan format'
+                }, status=400)
+            
+            generated_files = []
+            
+            # Process first file as demo (configurable limit for Phase 4 Part 1)
+            max_files_to_process = 1  # Increase in Part 2
+            for file_path in files_to_modify[:max_files_to_process]:
+                print(f"📝 Generating code for {file_path}...")
+                
+                result = feature_implementer.generate_code(
+                    feature.description,
+                    feature.implementation_plan,
+                    file_path
+                )
+                
+                if result.get('success'):
+                    generated_files.append({
+                        'file': file_path,
+                        'code': result.get('code', ''),
+                        'changes': result.get('changes_made', []),
+                        'notes': result.get('notes', '')
+                    })
+            
+            feature.generated_code = json.dumps(generated_files)
+            feature.files_modified = [f['file'] for f in generated_files]
+            feature.status = 'processing'
+            feature.save()
+            
+            print(f"✅ Code generated for {len(generated_files)} file(s)")
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Code generated successfully',
+                'generated_files': generated_files,
+                'feature_id': feature.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in implement_feature: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            if 'feature' in locals():
+                feature.status = 'failed'
+                feature.error_log = str(e)
+                feature.save()
+            
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error implementing feature: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+def list_features(request):
+    """List all feature requests with their status"""
+    try:
+        features = FeatureRequest.objects.all()[:20]  # Last 20 features
+        
+        features_data = [{
+            'id': f.id,
+            'description': f.description,
+            'status': f.status,
+            'created_at': f.created_at.isoformat(),
+            'completed_at': f.completed_at.isoformat() if f.completed_at else None,
+            'has_plan': bool(f.implementation_plan),
+            'has_code': bool(f.generated_code),
+        } for f in features]
+        
+        return JsonResponse({
+            'status': 'success',
+            'features': features_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Error listing features: {str(e)}'
+        }, status=500)
