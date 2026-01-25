@@ -309,13 +309,18 @@ def analyze_feature(request):
             analysis = feature_implementer.analyze_feature_request(feature.description)
             
             print(f"✅ Analysis complete: Feasible={analysis.get('feasible', False)}")
+            print(f"📊 Full Analysis Result:")
+            print(json.dumps(analysis, indent=2))
             
             if analysis.get('feasible'):
-                feature.implementation_plan = analysis.get('plan', '')
+                # Store the entire analysis as JSON, not just the plan string
+                feature.implementation_plan = json.dumps(analysis)
                 feature.status = 'approved'
+                print(f"💾 Stored implementation plan ({len(feature.implementation_plan)} chars)")
             else:
                 feature.error_log = analysis.get('reason', 'Analysis failed')
                 feature.status = 'failed'
+                print(f"❌ Feature marked as failed: {feature.error_log}")
             
             feature.save()
             
@@ -367,10 +372,14 @@ def implement_feature(request):
             print(f"🛠️  Implementing feature: {feature.description[:100]}...")
             
             if not feature.implementation_plan:
+                print(f"❌ No implementation plan found")
                 return JsonResponse({
                     'status': 'error',
                     'error': 'Feature must be analyzed first'
                 }, status=400)
+            
+            print(f"📋 Implementation Plan (first 200 chars):")
+            print(feature.implementation_plan[:200])
             
             # For now, generate code preview without applying
             # This is Phase 4 Part 1 - code generation and preview
@@ -379,8 +388,11 @@ def implement_feature(request):
             # Parse implementation plan
             try:
                 plan_data = json.loads(feature.implementation_plan)
+                print(f"✅ Successfully parsed implementation plan")
+                print(f"📁 Files to modify: {plan_data.get('files_to_modify', [])}")
                 files_to_modify = plan_data.get('files_to_modify', [])
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"❌ JSON parsing error: {str(e)}")
                 return JsonResponse({
                     'status': 'error',
                     'error': 'Invalid implementation plan format'
