@@ -161,6 +161,32 @@ header h1 {
     gap: 0.5rem;
 }
 
+/* Editor Container with Line Numbers */
+.editor-container {
+    flex: 1;
+    display: flex;
+    width: 100%;
+    background-color: var(--editor-bg);
+}
+
+.line-numbers {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 1rem 0.5rem;
+    text-align: right;
+    user-select: none;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    border-right: 1px solid var(--border-color);
+    min-width: 50px;
+    overflow: hidden;
+}
+
+.line-numbers div {
+    padding-right: 0.5rem;
+}
+
 /* Monaco Editor */
 .editor {
     flex: 1;

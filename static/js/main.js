@@ -1,6 +1,30 @@
 // Initialize code editor
 const editor = document.getElementById('editor');
 const filenameInput = document.getElementById('filename');
+const lineNumbers = document.getElementById('lineNumbers');
+
+// Line numbers functionality
+function updateLineNumbers() {
+    const lines = editor.value.split('\n');
+    const lineCount = lines.length;
+    
+    let lineNumbersHtml = '';
+    for (let i = 1; i <= lineCount; i++) {
+        lineNumbersHtml += `<div>${i}</div>`;
+    }
+    
+    lineNumbers.innerHTML = lineNumbersHtml;
+}
+
+// Update line numbers on input
+editor.addEventListener('input', updateLineNumbers);
+editor.addEventListener('scroll', function() {
+    // Sync scroll between line numbers and editor
+    lineNumbers.scrollTop = editor.scrollTop;
+});
+
+// Initialize line numbers on page load
+updateLineNumbers();
 
 // Get CSRF token from Django template
 function getCSRFToken() {

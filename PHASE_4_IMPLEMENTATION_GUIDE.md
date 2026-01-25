@@ -244,8 +244,8 @@ Respond in JSON format:
 **Change:** Read existing file content before generating code
 
 ```python
-# Process first file as demo (configurable limit for Phase 4 Part 1)
-max_files_to_process = 1  # Increase in Part 2
+
+max_files_to_process = 5
 for file_path in files_to_modify[:max_files_to_process]:
     print(f"📝 Generating code for {file_path}...")
     
