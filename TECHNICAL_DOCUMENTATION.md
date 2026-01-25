@@ -1,9 +1,9 @@
 # Technical Documentation - Self-Building App
 
 **Version:** 1.0.0  
-**Last Updated:** January 22, 2026  
-**Django Version:** 6.0+  
-**Python Version:** 3.8+
+**Last Updated:** January 25, 2026  
+**Django Version:** 4.2.27  
+**Python Version:** 3.9.6
 
 ---
 
@@ -40,15 +40,20 @@ The application follows a unique architectural pattern where:
 **Current Implementation:**
 - Functional dark-mode code editor with syntax support
 - Working chat interface with message persistence
-- Database models for feature tracking
+- Database models for feature tracking (ChatMessage, CodeSnippet, FeatureRequest, CodeExecution)
 - Multi-language support (English, Czech, Japanese, Russian)
 - AJAX-based communication between frontend and backend
+- Sandboxed code execution for Python and JavaScript
+- AI-powered feature analysis and code generation (Phase 4 ✅)
+- Context-aware code modification with project structure scanning
+- Feature request detection and implementation preview system
 
 **Future Vision:**
-- AI-powered feature implementation
-- Real-time code modification capabilities
+- Automated application of generated code changes with user approval
+- Real-time code modification workflow
 - Automated testing of new features
-- Version control integration
+- Version control integration with Git commits
+- Rollback mechanism for failed changes
 
 ---
 
@@ -117,8 +122,8 @@ The application follows a unique architectural pattern where:
 ## Technology Stack
 
 ### Backend
-- **Framework:** Django 6.0.1
-- **Language:** Python 3.8+
+- **Framework:** Django 4.2.27
+- **Language:** Python 3.9.6
 - **Database:** SQLite3 (development)
 - **ORM:** Django ORM
 - **Server:** Django Development Server (development)
@@ -441,28 +446,42 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 **Pattern Structure:**
 ```python
+# API endpoints without language prefix (fixes 302 redirect issue)
 urlpatterns = [
-    path('i18n/', include('django.conf.urls.i18n')),  # Language switching
+    path('i18n/', include('django.conf.urls.i18n')),
+    path('api/chat/', editor_views.chat, name='chat'),
+    path('api/save/', editor_views.save_code, name='save_code'),
+    path('api/execute/', editor_views.execute_code, name='execute_code'),
+    # Phase 4: Self-modification endpoints
+    path('api/features/', editor_views.list_features, name='list_features'),
+    path('api/features/analyze/', editor_views.analyze_feature, name='analyze_feature'),
+    path('api/features/implement/', editor_views.implement_feature, name='implement_feature'),
 ]
 
+# Language-prefixed URLs
 urlpatterns += i18n_patterns(
-    path('admin/', admin.site.urls),  # Django admin
-    path('', include('editor.urls')), # Editor app URLs
+    path('admin/', admin.site.urls),
+    path('', editor_views.index, name='index'),
 )
 ```
 
-**i18n_patterns Behavior:**
-- Adds language prefix to URLs (e.g., `/en/`, `/cs/`, `/ja/`, `/ru/`)
-- Allows language switching without rewriting URLs
-- Example: `/en/` → English, `/ja/` → Japanese
-
-#### App URLs (`editor/urls.py`)
+**API Endpoints (No Language Prefix):**
 
 | URL Pattern | View Function | Name | Purpose |
 |-------------|---------------|------|---------|
-| `''` | `views.index` | `index` | Main application page |
-| `'api/chat/'` | `views.chat` | `chat` | Chat message handler |
-| `'api/save/'` | `views.save_code` | `save_code` | Code save endpoint |
+| `'api/chat/'` | `editor_views.chat` | `chat` | Chat message handler |
+| `'api/save/'` | `editor_views.save_code` | `save_code` | Code save endpoint |
+| `'api/execute/'` | `editor_views.execute_code` | `execute_code` | Code execution endpoint |
+| `'api/features/'` | `editor_views.list_features` | `list_features` | List all feature requests |
+| `'api/features/analyze/'` | `editor_views.analyze_feature` | `analyze_feature` | Analyze feature feasibility (Phase 4) |
+| `'api/features/implement/'` | `editor_views.implement_feature` | `implement_feature` | Generate code for feature (Phase 4) |
+
+**Language-Prefixed URLs:**
+
+| URL Pattern | View Function | Name | Purpose |
+|-------------|---------------|------|---------|
+| `''` | `editor_views.index` | `index` | Main application page |
+| `'admin/'` | `admin.site.urls` | - | Django admin interface |
 
 ---
 
@@ -627,7 +646,353 @@ def index(request):
 - Saves all executions to CodeExecution model
 - Returns execution ID for tracking
 
-**File Location:** `editor/views.py` (Lines 185-260)
+**File Location:** `editor/views.py` (Lines 185-272)
+
+---
+
+#### 5. `analyze_feature(request)`
+
+**Purpose:** Analyze a feature request and create implementation plan (Phase 4)
+
+**HTTP Method:** POST
+
+**Request Payload:**
+```json
+{
+    "feature_id": 3
+}
+```
+
+**Response (Success - Feasible):**
+```json
+{
+    "status": "success",
+    "analysis": {
+        "feasible": true,
+        "plan": [
+            "Step 1: Modify the HTML template...",
+            "Step 2: Update the CSS...",
+            "Step 3: Modify the JavaScript..."
+        ],
+        "files_to_modify": [
+            "editor/templates/editor/index.html",
+            "static/css/style.css",
+            "static/js/main.js"
+        ],
+        "estimated_complexity": "simple"
+    },
+    "feature_id": 3
+}
+```
+
+**Response (Not Feasible):**
+```json
+{
+    "status": "success",
+    "analysis": {
+        "feasible": false,
+        "reason": "Requires external dependencies not available in the project"
+    },
+    "feature_id": 3
+}
+```
+
+**HTTP Status Codes:**
+- 200: Analysis completed successfully
+- 400: Missing feature_id
+- 404: Feature request not found
+- 500: Analysis error
+
+**Implementation Details:**
+- Calls `feature_implementer.analyze_feature_request()`
+- Scans project structure before analysis
+- Updates FeatureRequest status to 'processing' then 'approved' or 'failed'
+- Stores implementation plan as JSON in database
+- Uses OpenAI API for intelligent analysis
+
+**File Location:** `editor/views.py` (Lines 276-343)
+
+---
+
+#### 6. `implement_feature(request)`
+
+**Purpose:** Generate code for a feature request (Phase 4)
+
+**HTTP Method:** POST
+
+**Request Payload:**
+```json
+{
+    "feature_id": 3
+}
+```
+
+**Response (Success):**
+```json
+{
+    "status": "success",
+    "message": "Code generated successfully",
+    "generated_files": [
+        {
+            "file": "editor/templates/editor/index.html",
+            "code": "<!DOCTYPE html>...",
+            "changes": [
+                "Added a new div with id 'lineNumbers'",
+                "Wrapped textarea in editor-container div"
+            ],
+            "notes": "Line numbers will be synchronized with editor content"
+        }
+    ],
+    "feature_id": 3
+}
+```
+
+**Response (Error):**
+```json
+{
+    "status": "error",
+    "error": "Feature must be analyzed first"
+}
+```
+
+**HTTP Status Codes:**
+- 200: Code generated successfully
+- 400: Missing feature_id or no implementation plan
+- 404: Feature request not found
+- 500: Code generation error
+
+**Implementation Details:**
+- Requires prior analysis (implementation_plan must exist)
+- Reads existing file content using `feature_implementer.read_file_safely()`
+- Generates context-aware code that preserves existing functionality
+- Processes one file at a time (configurable limit)
+- Stores generated code in FeatureRequest.generated_code as JSON
+- Does NOT automatically apply changes (preview only)
+
+**File Location:** `editor/views.py` (Lines 345-467)
+
+---
+
+#### 7. `list_features(request)`
+
+**Purpose:** List all feature requests with their status
+
+**HTTP Method:** GET
+
+**Response (Success):**
+```json
+{
+    "status": "success",
+    "features": [
+        {
+            "id": 3,
+            "description": "Add line numbers on left side of text editor",
+            "status": "approved",
+            "created_at": "2026-01-25T16:48:50.123456",
+            "completed_at": null,
+            "has_plan": true,
+            "has_code": true
+        },
+        {
+            "id": 2,
+            "description": "Add user authentication",
+            "status": "pending",
+            "created_at": "2026-01-24T10:30:00.000000",
+            "completed_at": null,
+            "has_plan": false,
+            "has_code": false
+        }
+    ]
+}
+```
+
+**HTTP Status Codes:**
+- 200: Success
+- 500: Server error
+
+**Implementation Details:**
+- Returns last 20 feature requests
+- Includes metadata (has_plan, has_code flags)
+- Ordered by creation date (newest first)
+
+**File Location:** `editor/views.py` (Lines 469-494)
+
+---
+
+### Feature Implementer Module (`editor/feature_implementer.py`)
+
+**Purpose:** AI-powered feature analysis and code generation with context awareness (Phase 4)
+
+#### FeatureImplementer Class
+
+**Constructor Parameters:**
+- `base_path` (str): Base directory for the project (default: current directory)
+
+**Core Methods:**
+
+##### 1. `scan_project_structure() -> Dict[str, Any]`
+
+Scans project directory and returns comprehensive structure map.
+
+**Returns:**
+```python
+{
+    'python_files': ['manage.py', 'editor/views.py', ...],
+    'templates': ['editor/templates/editor/index.html'],
+    'static_files': ['static/css/style.css', 'static/js/main.js'],
+    'models': ['editor/models.py'],
+    'views': ['editor/views.py'],
+    'urls': ['selfbuilding_app/urls.py']
+}
+```
+
+**Features:**
+- Skips venv, migrations, __pycache__, .git directories
+- Uses exact filename matching to avoid false positives
+- Returns relative paths from project root
+
+##### 2. `read_file_safely(file_path: str) -> Dict[str, Any]`
+
+Safely reads file content with size limits and error handling.
+
+**Returns:**
+```python
+{
+    'exists': True,
+    'content': 'file content...',
+    'error': None
+}
+```
+
+**Features:**
+- 500KB file size limit (configurable via MAX_FILE_SIZE_BYTES)
+- Handles encoding errors gracefully
+- Returns structured result with error information
+
+##### 3. `analyze_feature_request(description: str) -> Dict[str, Any]`
+
+Analyzes feature request and creates implementation plan using AI.
+
+**Returns:**
+```python
+{
+    'feasible': True,
+    'plan': ['Step 1...', 'Step 2...'],
+    'files_to_modify': ['editor/templates/editor/index.html'],
+    'estimated_complexity': 'simple',
+    'reason': None  # or reason if not feasible
+}
+```
+
+**Features:**
+- Scans project structure first
+- Provides AI with actual file paths
+- Uses OpenAI API with JSON response format
+- Temperature: 0.3 (consistent analysis)
+
+##### 4. `generate_code(description, plan, target_file, existing_code) -> Dict[str, Any]`
+
+Generates code for specific file based on feature request.
+
+**Returns:**
+```python
+{
+    'success': True,
+    'code': 'complete file content...',
+    'changes_made': ['Added line numbers', 'Updated styling'],
+    'notes': 'Implementation notes...',
+    'preserved': ['Existing functions', 'Django tags']
+}
+```
+
+**Features:**
+- Context-aware: receives existing file content
+- Preserves existing functionality when modifying files
+- Separate prompts for new vs. modified files
+- Temperature: 0.2 (more deterministic code generation)
+
+##### 5-7. Additional Methods
+
+- `preview_changes()`: Generate before/after preview
+- `apply_changes()`: Write changes to file with optional backup
+- `run_tests()`: Run Django tests to validate changes
+- `create_git_commit()`: Create Git commit for changes
+- `rollback_changes()`: Rollback to previous state
+
+**Global Instance:**
+```python
+feature_implementer = FeatureImplementer()
+```
+
+**File Location:** `editor/feature_implementer.py` (Lines 1-542)
+
+---
+
+### AI Service Module (`editor/ai_service.py`)
+
+**Purpose:** OpenAI API integration for intelligent chat responses (Phase 2) and feature analysis (Phase 4)
+
+#### AIService Class
+
+**Initialization:**
+- Reads `OPENAI_API_KEY` from environment variables
+- Sets `enabled` flag based on API key presence
+- Uses `gpt-4o-mini` model (configurable via `OPENAI_MODEL` env var)
+
+**Core Methods:**
+
+##### `is_enabled() -> bool`
+
+Returns whether AI service is properly configured with API key.
+
+##### `get_system_prompt() -> str`
+
+Returns the system prompt that defines AI assistant's behavior:
+- Help users with coding questions
+- Understand feature requests and provide guidance
+- Suggest code improvements and best practices
+- Be friendly, helpful, and concise
+
+##### `process_message(user_message, conversation_history, code_context) -> Dict`
+
+Processes user message and generates AI response.
+
+**Parameters:**
+- `user_message`: The user's input message
+- `conversation_history`: Optional list of previous messages (last 10 used for context)
+- `code_context`: Optional current code from editor
+
+**Returns:**
+```python
+{
+    'status': 'success',  # or 'fallback' or 'error'
+    'response': 'AI response text...',
+    'error': None  # or error message if failed
+}
+```
+
+**Features:**
+- Includes conversation history (last 10 messages) for context
+- Adds code from editor when provided
+- Max tokens: 500
+- Temperature: 0.7 (balanced creativity)
+- Falls back to keyword-based responses if API unavailable
+- Logs token usage to console
+
+##### `_get_fallback_response(user_message) -> str`
+
+Generates keyword-based responses when AI is unavailable:
+- Feature request patterns → acknowledgment
+- Help patterns → guidance response
+- Greeting patterns → friendly hello
+- Default → acknowledgment with enhancement note
+
+**Global Instance:**
+```python
+ai_service = AIService()
+```
+
+**File Location:** `editor/ai_service.py` (Lines 1-149)
 
 ---
 
@@ -1714,33 +2079,42 @@ async def chat(request):
 - ✅ Database persistence of all conversations
 - ✅ Token usage tracking and monitoring
 
-### Phase 3: Code Execution (Completed ✅)
-- [x] Sandboxed Python execution
-- [x] Output display in UI (dedicated collapsible panel)
-- [x] Multiple language support (Python 3, JavaScript/Node.js)
-- [x] Error handling and debugging (full traceback display)
-- [x] Timeout and resource limits (5-second timeout, 10KB output limit)
-- [x] CodeExecutor module with security features
-- [x] CodeExecution model for history tracking
-- [x] Comprehensive test suite (11 tests)
+### Phase 3: Code Execution ✅ **COMPLETED**
+- ✅ Sandboxed Python execution
+- ✅ Output display in UI (dedicated collapsible panel)
+- ✅ Multiple language support (Python 3, JavaScript/Node.js)
+- ✅ Error handling and debugging (full traceback display)
+- ✅ Timeout and resource limits (5-second timeout, 10KB output limit)
+- ✅ CodeExecutor module with security features
+- ✅ CodeExecution model for history tracking
+- ✅ Comprehensive test suite (11 tests)
 - [ ] Real-time output streaming (future enhancement)
 
-### Phase 4: Self-Modification (Next)
-- [ ] AI-powered code generation from natural language
-- [ ] Automated file modification in repository
-- [ ] Automated testing of new features
-- [ ] Version control integration (Git)
-- [ ] Rollback mechanism for failed changes
-- [ ] Change preview and approval workflow
-- [ ] Documentation auto-generation
+### Phase 4: Self-Modification ✅ **PARTS 1-2 COMPLETED**
+- ✅ **Part 1:** Feature request detection and automatic tracking
+- ✅ **Part 1:** Feasibility analysis with project structure scanning
+- ✅ **Part 2:** AI-powered code generation from natural language
+- ✅ **Part 2:** Context-aware code modification
+- ✅ **Part 2:** Implementation preview system
+- ✅ **Part 2:** FeatureImplementer service with 7 core methods
+- ✅ **Part 2:** Three API endpoints (analyze, implement, list)
+- ✅ **Part 2:** Safe file reading with size limits
+- ✅ **Part 2:** Project structure scanner
+- ✅ **Part 2:** Generated code preview with changes tracking
+- ⏳ **Part 3:** Automated file modification with user approval workflow (NEXT PRIORITY)
 
-### Phase 5: Collaboration
-- [ ] User authentication and authorization
-- [ ] Project sharing and permissions
-- [ ] Real-time collaboration (WebSockets)
-- [ ] Code review system
-- [ ] Team workspaces
-- [ ] Activity feeds and notifications
+### Phase 5: Advanced Features (Future)
+- User authentication and authorization
+- Version control integration (Git commits)
+- Automated testing framework
+- Rollback mechanism for failed changes
+
+### Phase 6: Collaboration (Optional)
+- Project sharing and permissions
+- Real-time collaboration (WebSockets)
+- Code review system
+- Team workspaces
+- Activity feeds and notifications
 
 ---
 
