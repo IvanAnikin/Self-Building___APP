@@ -342,6 +342,55 @@ Respond in JSON format:
             'file_path': file_path
         }
     
+    def generate_diff(self, file_path: str, new_content: str) -> Dict[str, Any]:
+        """
+        Generate a unified diff between current file and new content.
+        
+        Args:
+            file_path: Relative path to the file
+            new_content: New content to compare
+            
+        Returns:
+            Dictionary with diff information
+        """
+        import difflib
+        
+        full_path = self.base_path / file_path
+        
+        if full_path.exists():
+            with open(full_path, 'r', encoding='utf-8') as f:
+                original = f.read()
+            file_exists = True
+        else:
+            original = ""
+            file_exists = False
+        
+        # Generate unified diff
+        original_lines = original.splitlines(keepends=True)
+        new_lines = new_content.splitlines(keepends=True)
+        
+        diff = list(difflib.unified_diff(
+            original_lines,
+            new_lines,
+            fromfile=f'{file_path} (current)',
+            tofile=f'{file_path} (modified)',
+            lineterm=''
+        ))
+        
+        # Count changes
+        additions = sum(1 for line in diff if line.startswith('+') and not line.startswith('+++'))
+        deletions = sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+        
+        return {
+            'file_path': file_path,
+            'file_exists': file_exists,
+            'diff': ''.join(diff),
+            'additions': additions,
+            'deletions': deletions,
+            'original_content': original,
+            'new_content': new_content
+        }
+    
     def apply_changes(self, file_path: str, content: str, backup: bool = True) -> Dict[str, Any]:
         """
         Apply changes to a file with optional backup.

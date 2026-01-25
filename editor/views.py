@@ -491,3 +491,250 @@ def list_features(request):
             'status': 'error',
             'error': f'Error listing features: {str(e)}'
         }, status=500)
+
+
+def preview_feature_changes(request):
+    """Preview changes that would be made by a feature implementation"""
+    print("\n" + "="*80)
+    print("🔵 FEATURE PREVIEW REQUEST")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            feature_id = data.get('feature_id')
+            
+            if not feature_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature ID is required'
+                }, status=400)
+            
+            # Get the feature request
+            try:
+                feature = FeatureRequest.objects.get(id=feature_id)
+            except FeatureRequest.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature request not found'
+                }, status=404)
+            
+            print(f"📋 Previewing feature: {feature.description[:100]}...")
+            
+            if not feature.generated_code:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'No generated code found. Please implement the feature first.'
+                }, status=400)
+            
+            # Parse generated code
+            try:
+                generated_files = json.loads(feature.generated_code)
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Invalid generated code format'
+                }, status=400)
+            
+            # Generate diffs for each file
+            previews = []
+            for file_info in generated_files:
+                file_path = file_info.get('file')
+                new_code = file_info.get('code', '')
+                
+                print(f"📄 Generating diff for {file_path}...")
+                
+                diff_info = feature_implementer.generate_diff(file_path, new_code)
+                
+                previews.append({
+                    'file': file_path,
+                    'diff': diff_info['diff'],
+                    'additions': diff_info['additions'],
+                    'deletions': diff_info['deletions'],
+                    'file_exists': diff_info['file_exists'],
+                    'changes': file_info.get('changes', []),
+                    'notes': file_info.get('notes', '')
+                })
+            
+            print(f"✅ Generated previews for {len(previews)} file(s)")
+            
+            return JsonResponse({
+                'status': 'success',
+                'previews': previews,
+                'feature_id': feature.id,
+                'description': feature.description
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in preview_feature_changes: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error generating preview: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+def apply_feature_changes(request):
+    """Apply approved feature changes to actual files"""
+    print("\n" + "="*80)
+    print("🔵 APPLY FEATURE CHANGES REQUEST")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            feature_id = data.get('feature_id')
+            
+            if not feature_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature ID is required'
+                }, status=400)
+            
+            # Get the feature request
+            try:
+                feature = FeatureRequest.objects.get(id=feature_id)
+            except FeatureRequest.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature request not found'
+                }, status=404)
+            
+            print(f"🛠️ Applying changes for feature: {feature.description[:100]}...")
+            
+            if not feature.generated_code:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'No generated code found'
+                }, status=400)
+            
+            # Parse generated code
+            try:
+                generated_files = json.loads(feature.generated_code)
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Invalid generated code format'
+                }, status=400)
+            
+            # Apply changes to each file
+            applied_files = []
+            errors = []
+            
+            for file_info in generated_files:
+                file_path = file_info.get('file')
+                new_code = file_info.get('code', '')
+                
+                print(f"📝 Applying changes to {file_path}...")
+                
+                result = feature_implementer.apply_changes(
+                    file_path=file_path,
+                    content=new_code,
+                    backup=True
+                )
+                
+                if result.get('success'):
+                    applied_files.append({
+                        'file': file_path,
+                        'backup_created': result.get('backup_created', False)
+                    })
+                    print(f"✅ Successfully applied changes to {file_path}")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    errors.append({
+                        'file': file_path,
+                        'error': error_msg
+                    })
+                    print(f"❌ Failed to apply changes to {file_path}: {error_msg}")
+            
+            # Update feature status
+            if errors:
+                feature.status = 'failed'
+                feature.error_log = json.dumps(errors)
+                print(f"⚠️ Feature partially failed with {len(errors)} error(s)")
+            else:
+                feature.status = 'completed'
+                feature.completed_at = timezone.now()
+                print(f"✅ Feature completed successfully")
+            
+            feature.save()
+            
+            return JsonResponse({
+                'status': 'success' if not errors else 'partial',
+                'message': f'Applied changes to {len(applied_files)} file(s)',
+                'applied_files': applied_files,
+                'errors': errors,
+                'feature_id': feature.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in apply_feature_changes: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            if 'feature' in locals():
+                feature.status = 'failed'
+                feature.error_log = str(e)
+                feature.save()
+            
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error applying changes: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+def reject_feature_changes(request):
+    """Reject feature changes and mark as rejected"""
+    print("\n" + "="*80)
+    print("🔵 REJECT FEATURE CHANGES REQUEST")
+    print("="*80)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            feature_id = data.get('feature_id')
+            
+            if not feature_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature ID is required'
+                }, status=400)
+            
+            # Get the feature request
+            try:
+                feature = FeatureRequest.objects.get(id=feature_id)
+            except FeatureRequest.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Feature request not found'
+                }, status=404)
+            
+            print(f"🚫 Rejecting feature: {feature.description[:100]}...")
+            
+            # Update status to rejected
+            feature.status = 'rejected'
+            feature.save()
+            
+            print(f"✅ Feature marked as rejected")
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Feature changes rejected',
+                'feature_id': feature.id
+            })
+            
+        except Exception as e:
+            print(f"❌ ERROR in reject_feature_changes: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error rejecting feature: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)

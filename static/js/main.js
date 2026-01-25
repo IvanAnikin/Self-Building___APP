@@ -365,10 +365,203 @@ async function implementFeature(featureId) {
             addMessage(`📄 ${file.file}: ${file.changes.join(', ')}`, false);
         }
         
-        addMessage(`🎉 Feature implementation preview ready! (Actual application of changes will be added in Phase 4 Part 2)`, false);
+        // Step 3: Show review changes button
+        addMessage(`📋 Changes are ready for review. Click the button below to review and approve or reject.`, false);
+        
+        // Add review button
+        const reviewMessage = document.createElement('div');
+        reviewMessage.className = 'message bot-message';
+        reviewMessage.innerHTML = `
+            <div class="message-content">
+                <button class="btn btn-primary" onclick="reviewFeatureChanges(${featureId})" style="margin-top: 10px;">
+                    👁️ Review Changes
+                </button>
+            </div>
+        `;
+        chatMessages.appendChild(reviewMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
         
     } catch (error) {
         addMessage(`❌ Error: ${error.message}`, false);
         console.error('Feature implementation error:', error);
+    }
+}
+
+// Phase 4 Part 3: Review feature changes
+async function reviewFeatureChanges(featureId) {
+    addMessage(`📋 Loading change preview for feature #${featureId}...`, false);
+    
+    try {
+        const response = await fetch('/api/features/preview/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ feature_id: featureId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            addMessage(`❌ Preview failed: ${data.error}`, false);
+            return;
+        }
+        
+        // Display preview information
+        addMessage(`📊 Changes Preview for: "${data.description}"`, false);
+        
+        for (const preview of data.previews) {
+            const status = preview.file_exists ? 'Modified' : 'New File';
+            addMessage(`📄 ${preview.file} (${status}): +${preview.additions} lines, -${preview.deletions} lines`, false);
+            
+            if (preview.notes) {
+                addMessage(`   ℹ️ ${preview.notes}`, false);
+            }
+        }
+        
+        // Show diff in a modal or expandable section
+        showDiffModal(data, featureId);
+        
+    } catch (error) {
+        addMessage(`❌ Error: ${error.message}`, false);
+        console.error('Preview error:', error);
+    }
+}
+
+// Show diff modal with approve/reject buttons
+function showDiffModal(previewData, featureId) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'diffModal';
+    
+    let filesHtml = '';
+    for (const preview of previewData.previews) {
+        const status = preview.file_exists ? 'Modified' : 'New File';
+        filesHtml += `
+            <div class="file-preview">
+                <h4>📄 ${preview.file} <span class="badge">${status}</span></h4>
+                <div class="diff-stats">
+                    <span class="additions">+${preview.additions}</span>
+                    <span class="deletions">-${preview.deletions}</span>
+                </div>
+                <pre class="diff-content">${escapeHtml(preview.diff)}</pre>
+                ${preview.notes ? `<p class="notes"><strong>Notes:</strong> ${escapeHtml(preview.notes)}</p>` : ''}
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Review Changes</h2>
+                <button class="close-btn" onclick="closeDiffModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Feature:</strong> ${escapeHtml(previewData.description)}</p>
+                ${filesHtml}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="rejectFeatureChanges(${featureId})">
+                    ❌ Reject Changes
+                </button>
+                <button class="btn btn-success" onclick="approveFeatureChanges(${featureId})">
+                    ✅ Accept & Apply Changes
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeDiffModal() {
+    const modal = document.getElementById('diffModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Approve and apply feature changes
+async function approveFeatureChanges(featureId) {
+    closeDiffModal();
+    addMessage(`⏳ Applying approved changes for feature #${featureId}...`, false);
+    
+    try {
+        const response = await fetch('/api/features/apply/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ feature_id: featureId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addMessage(`✅ ${data.message}`, false);
+            
+            for (const file of data.applied_files) {
+                const backup = file.backup_created ? ' (backup created)' : '';
+                addMessage(`   ✓ ${file.file}${backup}`, false);
+            }
+            
+            addMessage(`🎉 Feature implementation complete! The changes have been applied to your application.`, false);
+            
+        } else if (data.status === 'partial') {
+            addMessage(`⚠️ ${data.message}`, false);
+            
+            for (const file of data.applied_files) {
+                addMessage(`   ✓ ${file.file}`, false);
+            }
+            
+            for (const error of data.errors) {
+                addMessage(`   ❌ ${error.file}: ${error.error}`, false);
+            }
+            
+        } else {
+            addMessage(`❌ Failed to apply changes: ${data.error}`, false);
+        }
+        
+    } catch (error) {
+        addMessage(`❌ Error applying changes: ${error.message}`, false);
+        console.error('Apply changes error:', error);
+    }
+}
+
+// Reject feature changes
+async function rejectFeatureChanges(featureId) {
+    closeDiffModal();
+    addMessage(`🚫 Rejecting changes for feature #${featureId}...`, false);
+    
+    try {
+        const response = await fetch('/api/features/reject/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ feature_id: featureId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addMessage(`✅ ${data.message}. The generated code has been discarded.`, false);
+        } else {
+            addMessage(`❌ Failed to reject changes: ${data.error}`, false);
+        }
+        
+    } catch (error) {
+        addMessage(`❌ Error rejecting changes: ${error.message}`, false);
+        console.error('Reject changes error:', error);
     }
 }
