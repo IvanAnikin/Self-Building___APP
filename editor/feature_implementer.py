@@ -125,6 +125,13 @@ Respond in JSON format:
         
         mode = "modify" if existing_code else "create"
         
+        # Build existing code section separately to avoid f-string backslash issue
+        existing_code_section = ""
+        if existing_code:
+            existing_code_section = f"Existing Code:\n```\n{existing_code}\n```\n"
+        
+        modified_or_new = "modified" if existing_code else "new"
+        
         prompt = f"""Generate code for this Django application feature:
 
 Feature: {feature_description}
@@ -134,9 +141,9 @@ Implementation Plan: {implementation_plan}
 Target File: {target_file}
 Mode: {mode}
 
-{f"Existing Code:\n```\n{existing_code}\n```\n" if existing_code else ""}
+{existing_code_section}
 
-Generate the complete {"modified" if existing_code else "new"} code for {target_file}.
+Generate the complete {modified_or_new} code for {target_file}.
 Follow Django best practices and maintain code quality.
 Ensure the code integrates seamlessly with the existing application.
 
