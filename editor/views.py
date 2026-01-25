@@ -93,15 +93,24 @@ def chat(request):
                     status='pending'
                 )
                 print(f"📋 Feature request created (ID: {feature.id})")
+            else:
+                feature = None
             
             print(f"✅ Request completed successfully")
             print("="*80 + "\n")
             
-            return JsonResponse({
+            response_data = {
                 'status': 'success',
                 'response': response_message,
                 'ai_enabled': ai_service.is_enabled()
-            })
+            }
+            
+            # Include feature request ID if one was created
+            if feature:
+                response_data['feature_request_id'] = feature.id
+                response_data['is_feature_request'] = True
+            
+            return JsonResponse(response_data)
             
         except Exception as e:
             print(f"❌ ERROR in chat view: {str(e)}")
@@ -123,13 +132,15 @@ def _is_feature_request(message):
     # More specific patterns for feature requests
     feature_patterns = [
         'add feature', 'add a feature', 'add the feature',
+        'add a ', 'add an ', 'add some',
         'implement', 'create a', 'create an',
         'build a', 'build an',
         'can you add', 'could you add',
         'can you create', 'could you create',
         'can you implement', 'could you implement',
         'want to add', 'need to add',
-        'would like to add', 'would like a'
+        'would like to add', 'would like a',
+        'i want', 'i need'
     ]
     message_lower = message.lower()
     return any(pattern in message_lower for pattern in feature_patterns)

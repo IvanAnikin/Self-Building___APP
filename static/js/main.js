@@ -43,7 +43,7 @@ const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
 
-function addMessage(content, isUser = false) {
+function addMessage(content, isUser = false, featureRequestId = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
     
@@ -58,6 +58,17 @@ function addMessage(content, isUser = false) {
     
     messageContent.appendChild(strong);
     messageContent.appendChild(p);
+    
+    // Add "Implement Feature" button if this is a feature request
+    if (featureRequestId && !isUser) {
+        const implementBtn = document.createElement('button');
+        implementBtn.className = 'btn btn-primary btn-sm implement-feature-btn';
+        implementBtn.textContent = '🚀 Implement This Feature';
+        implementBtn.style.marginTop = '10px';
+        implementBtn.onclick = () => implementFeature(featureRequestId);
+        messageContent.appendChild(implementBtn);
+    }
+    
     messageDiv.appendChild(messageContent);
     
     chatMessages.appendChild(messageDiv);
@@ -130,7 +141,9 @@ async function sendMessage() {
         removeTypingIndicator();
         
         if (data.status === 'success') {
-            addMessage(data.response, false);
+            // Add message with feature request button if applicable
+            const featureId = data.is_feature_request ? data.feature_request_id : null;
+            addMessage(data.response, false, featureId);
             
             // Show AI status badge if available
             if (data.ai_enabled) {
@@ -286,3 +299,70 @@ document.getElementById('runBtn').addEventListener('click', async function() {
     }
 });
 
+
+// Phase 4: Feature Implementation
+async function implementFeature(featureId) {
+    addMessage(`🔍 Analyzing feature request #${featureId}...`, false);
+    
+    try {
+        // Step 1: Analyze the feature
+        const analyzeResponse = await fetch('/api/features/analyze/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ feature_id: featureId })
+        });
+        
+        const analyzeData = await analyzeResponse.json();
+        
+        if (analyzeData.status !== 'success') {
+            addMessage(`❌ Analysis failed: ${analyzeData.error}`, false);
+            return;
+        }
+        
+        const analysis = analyzeData.analysis;
+        
+        if (!analysis.feasible) {
+            addMessage(`❌ Feature not feasible: ${analysis.reason}`, false);
+            return;
+        }
+        
+        addMessage(`✅ Feature is feasible! Complexity: ${analysis.estimated_complexity}`, false);
+        addMessage(`📋 Plan: ${analysis.plan.substring(0, 200)}...`, false);
+        
+        // Step 2: Generate code
+        addMessage(`🛠️ Generating code...`, false);
+        
+        const implementResponse = await fetch('/api/features/implement/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ feature_id: featureId })
+        });
+        
+        const implementData = await implementResponse.json();
+        
+        if (implementData.status !== 'success') {
+            addMessage(`❌ Code generation failed: ${implementData.error}`, false);
+            return;
+        }
+        
+        const generated = implementData.generated_files;
+        
+        addMessage(`✅ Code generated for ${generated.length} file(s)!`, false);
+        
+        for (const file of generated) {
+            addMessage(`📄 ${file.file}: ${file.changes.join(', ')}`, false);
+        }
+        
+        addMessage(`🎉 Feature implementation preview ready! (Actual application of changes will be added in Phase 4 Part 2)`, false);
+        
+    } catch (error) {
+        addMessage(`❌ Error: ${error.message}`, false);
+        console.error('Feature implementation error:', error);
+    }
+}
