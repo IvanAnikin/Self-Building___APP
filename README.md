@@ -26,10 +26,11 @@ When you request a feature (e.g., "add line numbers to the editor"):
 1. **Detection** 🔍 - System automatically detects it's a feature request
 2. **Analysis** 🧠 - AI analyzes feasibility, scans project structure, creates implementation plan
 3. **Code Generation** 💻 - AI generates context-aware code that preserves existing functionality
-4. **Preview** 👀 - You see the generated code and what changes would be made
-5. **Manual Application** ✋ - Currently, you need to manually copy/apply the code (Part 3 will automate this with approval workflow)
+4. **Preview** 👁️ - Review the generated changes with side-by-side diff viewer
+5. **User Approval** ✅❌ - Accept to apply changes or reject to discard them
+6. **Application** 🎯 - Approved changes are safely applied to your files with automatic backups
 
-**Important:** Generated code is saved in the database but **does NOT automatically modify your project files**. This is intentional for safety!
+**New in Phase 4 Part 3:** The application now supports a complete approval workflow! You can review generated code changes in a beautiful diff viewer, then either accept to apply them to your project files or reject to discard them. All file modifications create automatic backups for safety.
 
 ## Screenshots
 
@@ -206,8 +207,6 @@ Stores code execution history including code, language, output, errors, and exec
 - `POST /api/execute/` - Execute code
   - Request: `{ "code": "your code", "language": "python", "filename": "script.py" }`
   - Response: `{ "status": "success/error", "stdout": "output", "stderr": "errors", "returncode": 0, "execution_id": 1 }`
-- `GET /api/features/` - List all feature requests
-  - Response: `{ "status": "success", "features": [...] }`
 - `GET /api/features/` - List all feature requests ✅
   - Response: `{ "status": "success", "features": [{"id": 1, "description": "...", "status": "approved", "has_plan": true, "has_code": true}] }`
 - `POST /api/features/analyze/` - Analyze feature feasibility ✅
@@ -216,6 +215,15 @@ Stores code execution history including code, language, output, errors, and exec
 - `POST /api/features/implement/` - Generate code for feature ✅
   - Request: `{ "feature_id": 1 }`
   - Response: `{ "status": "success", "generated_files": [{"file": "editor/templates/editor/index.html", "code": "...", "changes": ["Added line numbers div"], "notes": "..."}], "message": "Code generated successfully" }`
+- `POST /api/features/preview/` - Preview changes with diff ✅ **NEW**
+  - Request: `{ "feature_id": 1 }`
+  - Response: `{ "status": "success", "previews": [{"file": "path/to/file.py", "diff": "unified diff", "additions": 10, "deletions": 2, "file_exists": true}] }`
+- `POST /api/features/apply/` - Apply approved changes to files ✅ **NEW**
+  - Request: `{ "feature_id": 1 }`
+  - Response: `{ "status": "success", "message": "Applied changes to 1 file(s)", "applied_files": [{"file": "path/to/file.py", "backup_created": true}] }`
+- `POST /api/features/reject/` - Reject and discard changes ✅ **NEW**
+  - Request: `{ "feature_id": 1 }`
+  - Response: `{ "status": "success", "message": "Feature changes rejected" }`
 
 ## Future Roadmap
 
@@ -243,16 +251,18 @@ Stores code execution history including code, language, output, errors, and exec
 - Output truncation for large outputs
 - Execution history tracking in database
 
-✅ **Phase 4: Self-Modification - Code Generation** (Completed)
+✅ **Phase 4: Self-Modification - Complete!** (Completed)
 - ✅ Part 1: AI-powered feasibility analysis
 - ✅ Part 2: Context-aware code generation from natural language
+- ✅ Part 3: User approval workflow with automated file modification ⭐ **NEW!**
 - ✅ Feature request detection and tracking
-- ✅ Implementation preview system
-- ✅ FeatureImplementer service with 7 core methods
+- ✅ Implementation preview system with diff viewer
+- ✅ FeatureImplementer service with complete workflow
 - ✅ Project structure scanning
 - ✅ Safe file reading and code generation
-- ✅ Three API endpoints (analyze, implement, list)
-- ⏳ **Part 3: Automated file modification with user approval** (Next Priority)
+- ✅ Six API endpoints (analyze, implement, list, preview, apply, reject)
+- ✅ Automatic backup creation before modifications
+- ✅ Accept/Reject workflow with visual diff viewer
 
 ⏳ **Phase 5: Advanced Features** (Future)
 - User authentication and authorization
@@ -289,17 +299,18 @@ For issues, questions, or suggestions, please open an issue on GitHub.
 - ✅ Output truncation for large outputs (10,000 char limit)
 - ✅ Execution history tracking in database
 
-**Phase 4 - Self-Modification (Code Generation Complete!):**
+**Phase 4 - Self-Modification (Fully Complete!):**
 - ✅ AI-powered feature analysis and code generation
 - ✅ Feature request detection with "Implement" button
-- ✅ FeatureImplementer service with 7 core methods
-- ✅ Implementation preview system
+- ✅ FeatureImplementer service with complete workflow
+- ✅ Implementation preview system with diff viewer ⭐ **NEW!**
+- ✅ User approval workflow (Accept/Reject) ⭐ **NEW!**
 - ✅ Context-aware code modification
 - ✅ Project structure scanning
 - ✅ Safe file reading and preservation of existing code
-- ✅ Full workflow: Feature Request → Analysis → Code Generation → Preview
-- ⏳ **Next: Part 3 - User approval and automated file application**
+- ✅ Automatic backup creation before applying changes ⭐ **NEW!**
+- ✅ Full workflow: Feature Request → Analysis → Code Generation → Preview → **User Approval → Apply to Files** ⭐ **NEW!**
 
-The application is fully functional for writing, saving, executing code, and generating feature implementations! **Add an OpenAI API key to unlock Phase 4's AI-powered self-building capabilities including intelligent feature analysis and automated code generation!**
+The application is fully functional for writing, saving, executing code, and generating AND APPLYING feature implementations! **Add an OpenAI API key to unlock Phase 4's AI-powered self-building capabilities including intelligent feature analysis, automated code generation, and safe file modification with user approval!**
 
-**Note on Phase 4 Code Generation:** When you request a feature (like "add line numbers"), the AI generates the modified code and shows you a preview, but does NOT automatically modify your project files. This is by design for safety - Phase 4 Part 3 will add user approval workflow to actually apply the changes.
+**Phase 4 Part 3 Complete:** When you request a feature (like "add line numbers"), the AI generates the modified code, shows you a beautiful diff preview in a modal, and you can choose to Accept (apply to files with automatic backup) or Reject (discard changes). Full self-modification capability with safety controls!

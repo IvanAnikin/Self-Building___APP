@@ -9,7 +9,9 @@
     --accent-primary: #58a6ff;
     --accent-hover: #1f6feb;
     --success: #3fb950;
+    --success-hover: #2ea043;
     --danger: #f85149;
+    --danger-hover: #da3633;
     --editor-bg: #0d1117;
 }
 
@@ -690,7 +692,7 @@ header h1 {
 }
 
 .btn-success:hover {
-    background: #2ea043;
+    background: var(--success-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(63, 185, 80, 0.3);
 }
@@ -701,11 +703,15 @@ header h1 {
 }
 
 .btn-danger:hover {
-    background: #da3633;
+    background: var(--danger-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(248, 81, 73, 0.3);
 }
 
 .btn:active {
     transform: translateY(0);
+}
+
+.review-changes-btn {
+    margin-top: 10px;
 }

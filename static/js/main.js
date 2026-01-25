@@ -373,12 +373,18 @@ async function implementFeature(featureId) {
         reviewMessage.className = 'message bot-message';
         reviewMessage.innerHTML = `
             <div class="message-content">
-                <button class="btn btn-primary" onclick="reviewFeatureChanges(${featureId})" style="margin-top: 10px;">
+                <button class="btn btn-primary review-changes-btn" data-feature-id="${featureId}">
                     👁️ Review Changes
                 </button>
             </div>
         `;
         chatMessages.appendChild(reviewMessage);
+        
+        // Add event listener for the review button
+        reviewMessage.querySelector('.review-changes-btn').addEventListener('click', function() {
+            reviewFeatureChanges(this.getAttribute('data-feature-id'));
+        });
+        
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
     } catch (error) {
@@ -456,17 +462,17 @@ function showDiffModal(previewData, featureId) {
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Review Changes</h2>
-                <button class="close-btn" onclick="closeDiffModal()">&times;</button>
+                <button class="close-btn" data-action="close">&times;</button>
             </div>
             <div class="modal-body">
                 <p><strong>Feature:</strong> ${escapeHtml(previewData.description)}</p>
                 ${filesHtml}
             </div>
             <div class="modal-footer">
-                <button class="btn btn-danger" onclick="rejectFeatureChanges(${featureId})">
+                <button class="btn btn-danger" data-action="reject" data-feature-id="${featureId}">
                     ❌ Reject Changes
                 </button>
-                <button class="btn btn-success" onclick="approveFeatureChanges(${featureId})">
+                <button class="btn btn-success" data-action="approve" data-feature-id="${featureId}">
                     ✅ Accept & Apply Changes
                 </button>
             </div>
@@ -474,6 +480,15 @@ function showDiffModal(previewData, featureId) {
     `;
     
     document.body.appendChild(modal);
+    
+    // Add event listeners to buttons
+    modal.querySelector('[data-action="close"]').addEventListener('click', closeDiffModal);
+    modal.querySelector('[data-action="reject"]').addEventListener('click', function() {
+        rejectFeatureChanges(this.getAttribute('data-feature-id'));
+    });
+    modal.querySelector('[data-action="approve"]').addEventListener('click', function() {
+        approveFeatureChanges(this.getAttribute('data-feature-id'));
+    });
 }
 
 function closeDiffModal() {
