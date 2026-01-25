@@ -10,6 +10,10 @@ from typing import Dict, Any, List
 from pathlib import Path
 from .ai_service import ai_service
 
+# Constants
+MAX_FILE_SIZE_BYTES = 500000  # 500KB limit for reading files
+MAX_FILES_IN_PROMPT = 20  # Maximum files to include in AI prompt
+
 
 class FeatureImplementer:
     """
@@ -26,6 +30,105 @@ class FeatureImplementer:
         """
         self.base_path = Path(base_path) if base_path else Path(os.getcwd())
         self.ai_service = ai_service
+    
+    def scan_project_structure(self) -> Dict[str, Any]:
+        """
+        Scan the project directory and return a comprehensive structure map.
+        
+        Returns:
+            Dictionary containing:
+            {
+                'python_files': List[str],
+                'templates': List[str],
+                'static_files': List[str],
+                'models': List[str],
+                'views': List[str],
+                'urls': List[str]
+            }
+        """
+        structure = {
+            'python_files': [],
+            'templates': [],
+            'static_files': [],
+            'models': [],
+            'views': [],
+            'urls': []
+        }
+        
+        # Scan Python files
+        for root, dirs, files in os.walk(self.base_path):
+            # Skip venv, migrations, __pycache__
+            dirs[:] = [d for d in dirs if d not in ['venv', '__pycache__', 'migrations', '.git']]
+            
+            for file in files:
+                rel_path = os.path.relpath(os.path.join(root, file), self.base_path)
+                
+                if file.endswith('.py'):
+                    structure['python_files'].append(rel_path)
+                    # Use exact filename matching to avoid false positives
+                    if file == 'models.py':
+                        structure['models'].append(rel_path)
+                    elif file == 'views.py':
+                        structure['views'].append(rel_path)
+                    elif file == 'urls.py':
+                        structure['urls'].append(rel_path)
+                
+                elif file.endswith('.html'):
+                    structure['templates'].append(rel_path)
+                
+                elif file.endswith(('.js', '.css', '.jpg', '.png', '.svg')):
+                    structure['static_files'].append(rel_path)
+        
+        return structure
+    
+    def read_file_safely(self, file_path: str) -> Dict[str, Any]:
+        """
+        Safely read a file's content.
+        
+        Args:
+            file_path: Relative path to file from project root
+            
+        Returns:
+            Dictionary with:
+            {
+                'exists': bool,
+                'content': str (if exists),
+                'error': str (if failed)
+            }
+        """
+        try:
+            full_path = self.base_path / file_path
+            
+            if not full_path.exists():
+                return {
+                    'exists': False,
+                    'content': None,
+                    'error': f'File {file_path} does not exist'
+                }
+            
+            # Don't read binary files or very large files
+            if full_path.stat().st_size > MAX_FILE_SIZE_BYTES:
+                return {
+                    'exists': True,
+                    'content': None,
+                    'error': 'File too large to read'
+                }
+            
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return {
+                'exists': True,
+                'content': content,
+                'error': None
+            }
+            
+        except Exception as e:
+            return {
+                'exists': False,
+                'content': None,
+                'error': f'Error reading file: {str(e)}'
+            }
     
     def analyze_feature_request(self, description: str) -> Dict[str, Any]:
         """
@@ -50,6 +153,9 @@ class FeatureImplementer:
                 'reason': 'AI service is not enabled. Please configure OpenAI API key.'
             }
         
+        # Scan project structure for context
+        project_structure = self.scan_project_structure()
+        
         prompt = f"""Analyze the following feature request for a Django web application (Self-Building App):
 
 Feature Request: {description}
@@ -58,21 +164,29 @@ Current Project Structure:
 - Django backend (Python)
 - Frontend: HTML, CSS, JavaScript (Vanilla)
 - Database: SQLite with Django ORM
-- Existing models: ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
-- Existing features: Code editor, AI chatbot, Code execution (Python/JS)
+
+Existing Files:
+Python Files: {', '.join(project_structure['python_files'][:MAX_FILES_IN_PROMPT])}
+Templates: {', '.join(project_structure['templates'])}
+Static Files: {', '.join(project_structure['static_files'][:MAX_FILES_IN_PROMPT])}
+
+Existing models: ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
+Existing features: Code editor, AI chatbot, Code execution (Python/JS)
+
+IMPORTANT: Use ONLY the actual file paths listed above. Do not invent new file names.
 
 Please provide:
 1. Feasibility assessment (is this implementable?)
 2. Implementation plan (step-by-step)
-3. List of files that need to be created or modified
+3. List of EXISTING files that need modification (choose from files listed above)
 4. Estimated complexity (simple/medium/complex)
 5. Any dependencies or prerequisites
 
 Respond in JSON format:
 {{
     "feasible": true/false,
-    "plan": "detailed step-by-step plan",
-    "files_to_modify": ["file1.py", "file2.js"],
+    "plan": ["step 1", "step 2", ...],
+    "files_to_modify": ["actual/file/path.py"],
     "estimated_complexity": "simple|medium|complex",
     "reason": "explanation if not feasible"
 }}"""
@@ -128,7 +242,23 @@ Respond in JSON format:
         # Build existing code section separately to avoid f-string backslash issue
         existing_code_section = ""
         if existing_code:
-            existing_code_section = f"Existing Code:\n```\n{existing_code}\n```\n"
+            existing_code_section = f"""
+Current File Content:
+```
+{existing_code}
+```
+
+IMPORTANT: Modify the existing code above to add the requested feature.
+- Preserve all existing functionality
+- Maintain existing imports, functions, and structure
+- Only add/modify what's necessary for the new feature
+- Keep the same file format and style
+"""
+        else:
+            existing_code_section = """
+This is a NEW file that does not exist yet.
+Generate complete, production-ready code.
+"""
         
         modified_or_new = "modified" if existing_code else "new"
         
@@ -143,15 +273,21 @@ Mode: {mode}
 
 {existing_code_section}
 
-Generate the complete {modified_or_new} code for {target_file}.
+Generate the complete {modified_or_new} file content for {target_file}.
 Follow Django best practices and maintain code quality.
 Ensure the code integrates seamlessly with the existing application.
+
+If modifying existing code:
+- Preserve all critical functionality
+- Keep existing imports and structure
+- Comment your changes with # NEW: or # MODIFIED:
 
 Respond in JSON format:
 {{
     "code": "complete file content",
     "changes_made": ["list of key changes"],
-    "notes": "important implementation notes"
+    "notes": "important implementation notes",
+    "preserved": ["list of things preserved from original"]
 }}"""
         
         try:

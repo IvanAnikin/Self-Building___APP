@@ -405,10 +405,25 @@ def implement_feature(request):
             for file_path in files_to_modify[:max_files_to_process]:
                 print(f"📝 Generating code for {file_path}...")
                 
+                # Read existing file content using feature_implementer's safe method
+                file_info = feature_implementer.read_file_safely(file_path)
+                existing_code = None
+                
+                if file_info['exists']:
+                    if file_info['content']:
+                        existing_code = file_info['content']
+                        print(f"✅ File exists, read {len(existing_code)} characters")
+                    else:
+                        print(f"⚠️  File exists but couldn't read: {file_info['error']}")
+                else:
+                    print(f"ℹ️  File does not exist, will generate new file")
+                
+                # Generate code with existing context
                 result = feature_implementer.generate_code(
                     feature.description,
                     feature.implementation_plan,
-                    file_path
+                    file_path,
+                    existing_code=existing_code
                 )
                 
                 if result.get('success'):
