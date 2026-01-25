@@ -330,7 +330,13 @@ async function implementFeature(featureId) {
         }
         
         addMessage(`✅ Feature is feasible! Complexity: ${analysis.estimated_complexity}`, false);
-        addMessage(`📋 Plan: ${analysis.plan.substring(0, 200)}...`, false);
+        
+        // Safely display plan
+        const plan = analysis.plan || '';
+        const planPreview = plan.length > 200 ? plan.substring(0, 200) + '...' : plan;
+        if (planPreview) {
+            addMessage(`📋 Plan: ${planPreview}`, false);
+        }
         
         // Step 2: Generate code
         addMessage(`🛠️ Generating code...`, false);

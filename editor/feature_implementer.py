@@ -88,8 +88,14 @@ Respond in JSON format:
                 response_format={"type": "json_object"}
             )
             
-            result = json.loads(response.choices[0].message.content)
-            return result
+            try:
+                result = json.loads(response.choices[0].message.content)
+                return result
+            except json.JSONDecodeError as e:
+                return {
+                    'feasible': False,
+                    'reason': f'AI response parsing error: {str(e)}'
+                }
             
         except Exception as e:
             return {
@@ -152,9 +158,15 @@ Respond in JSON format:
                 response_format={"type": "json_object"}
             )
             
-            result = json.loads(response.choices[0].message.content)
-            result['success'] = True
-            return result
+            try:
+                result = json.loads(response.choices[0].message.content)
+                result['success'] = True
+                return result
+            except json.JSONDecodeError as e:
+                return {
+                    'success': False,
+                    'error': f'AI response parsing error: {str(e)}'
+                }
             
         except Exception as e:
             return {
@@ -202,12 +214,16 @@ Respond in JSON format:
         try:
             full_path = self.base_path / file_path
             
+            # Track if backup was actually created
+            backup_created = False
+            
             # Create backup if requested and file exists
             if backup and full_path.exists():
                 backup_path = full_path.with_suffix(full_path.suffix + '.backup')
                 with open(full_path, 'r') as f:
                     with open(backup_path, 'w') as backup_f:
                         backup_f.write(f.read())
+                backup_created = True
             
             # Ensure parent directory exists
             full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -219,7 +235,7 @@ Respond in JSON format:
             return {
                 'success': True,
                 'message': f'Successfully updated {file_path}',
-                'backup_created': backup and full_path.exists()
+                'backup_created': backup_created
             }
             
         except Exception as e:

@@ -376,10 +376,21 @@ def implement_feature(request):
             # This is Phase 4 Part 1 - code generation and preview
             # Part 2 will handle actual application of changes
             
-            files_to_modify = json.loads(feature.implementation_plan).get('files_to_modify', [])
+            # Parse implementation plan
+            try:
+                plan_data = json.loads(feature.implementation_plan)
+                files_to_modify = plan_data.get('files_to_modify', [])
+            except (json.JSONDecodeError, TypeError):
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Invalid implementation plan format'
+                }, status=400)
+            
             generated_files = []
             
-            for file_path in files_to_modify[:1]:  # Start with first file for demo
+            # Process first file as demo (configurable limit for Phase 4 Part 1)
+            max_files_to_process = 1  # Increase in Part 2
+            for file_path in files_to_modify[:max_files_to_process]:
                 print(f"📝 Generating code for {file_path}...")
                 
                 result = feature_implementer.generate_code(
