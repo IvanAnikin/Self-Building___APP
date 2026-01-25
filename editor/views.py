@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils import timezone
+from django.conf import settings
 import json
+from pathlib import Path
 from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
 from .ai_service import ai_service
 from .code_executor import code_executor
@@ -405,10 +407,27 @@ def implement_feature(request):
             for file_path in files_to_modify[:max_files_to_process]:
                 print(f"📝 Generating code for {file_path}...")
                 
+                # Read existing file content if file exists
+                existing_code = None
+                full_path = Path(settings.BASE_DIR) / file_path
+                
+                if full_path.exists():
+                    print(f"✅ File exists, reading current content...")
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            existing_code = f.read()
+                        print(f"📖 Read {len(existing_code)} characters from existing file")
+                    except Exception as e:
+                        print(f"⚠️  Could not read file: {e}")
+                else:
+                    print(f"ℹ️  File does not exist, will generate new file")
+                
+                # Generate code with existing context
                 result = feature_implementer.generate_code(
                     feature.description,
                     feature.implementation_plan,
-                    file_path
+                    file_path,
+                    existing_code=existing_code
                 )
                 
                 if result.get('success'):
