@@ -10,6 +10,10 @@ from typing import Dict, Any, List
 from pathlib import Path
 from .ai_service import ai_service
 
+# Constants
+MAX_FILE_SIZE_BYTES = 500000  # 500KB limit for reading files
+MAX_FILES_IN_PROMPT = 20  # Maximum files to include in AI prompt
+
 
 class FeatureImplementer:
     """
@@ -61,11 +65,12 @@ class FeatureImplementer:
                 
                 if file.endswith('.py'):
                     structure['python_files'].append(rel_path)
-                    if 'models.py' in file:
+                    # Use exact filename matching to avoid false positives
+                    if file == 'models.py':
                         structure['models'].append(rel_path)
-                    elif 'views.py' in file:
+                    elif file == 'views.py':
                         structure['views'].append(rel_path)
-                    elif 'urls.py' in file:
+                    elif file == 'urls.py':
                         structure['urls'].append(rel_path)
                 
                 elif file.endswith('.html'):
@@ -102,7 +107,7 @@ class FeatureImplementer:
                 }
             
             # Don't read binary files or very large files
-            if full_path.stat().st_size > 500000:  # 500KB limit
+            if full_path.stat().st_size > MAX_FILE_SIZE_BYTES:
                 return {
                     'exists': True,
                     'content': None,
@@ -161,9 +166,9 @@ Current Project Structure:
 - Database: SQLite with Django ORM
 
 Existing Files:
-Python Files: {', '.join(project_structure['python_files'][:20])}
+Python Files: {', '.join(project_structure['python_files'][:MAX_FILES_IN_PROMPT])}
 Templates: {', '.join(project_structure['templates'])}
-Static Files: {', '.join(project_structure['static_files'][:20])}
+Static Files: {', '.join(project_structure['static_files'][:MAX_FILES_IN_PROMPT])}
 
 Existing models: ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
 Existing features: Code editor, AI chatbot, Code execution (Python/JS)
