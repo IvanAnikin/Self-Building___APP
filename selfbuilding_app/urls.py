@@ -29,6 +29,10 @@ urlpatterns = [
     path('api/features/', editor_views.list_features, name='list_features'),
     path('api/features/analyze/', editor_views.analyze_feature, name='analyze_feature'),
     path('api/features/implement/', editor_views.implement_feature, name='implement_feature'),
+    # Phase 4 Part 3: User approval workflow endpoints
+    path('api/features/preview/', editor_views.preview_feature_changes, name='preview_feature_changes'),
+    path('api/features/apply/', editor_views.apply_feature_changes, name='apply_feature_changes'),
+    path('api/features/reject/', editor_views.reject_feature_changes, name='reject_feature_changes'),
 ]
 
 # Language-prefixed URLs

@@ -192,15 +192,22 @@ Respond in JSON format:
 }}"""
         
         try:
-            response = self.ai_service.client.chat.completions.create(
-                model=self.ai_service.model,
-                messages=[
-                    {"role": "system", "content": "You are an expert software architect analyzing feature requests."},
+            # GPT-5 models use max_completion_tokens instead of max_tokens
+            api_params = {
+                "model": self.ai_service.model,
+                "messages": [
+                    {"role": "system", "content": "You are an expert software architect analyzing feature requests. Respond with valid JSON only."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                response_format={"type": "json_object"}
-            )
+                "temperature": 0.3,
+                "response_format": {"type": "json_object"}
+            }
+            if self.ai_service.model.startswith('gpt-5'):
+                api_params["max_completion_tokens"] = 1000
+            else:
+                api_params["max_tokens"] = 1000
+            
+            response = self.ai_service.client.chat.completions.create(**api_params)
             
             try:
                 result = json.loads(response.choices[0].message.content)
@@ -282,27 +289,57 @@ If modifying existing code:
 - Keep existing imports and structure
 - Comment your changes with # NEW: or # MODIFIED:
 
+CRITICAL FORMATTING RULES:
+- Return RAW code in the 'code' field - NO markdown formatting
+- Do NOT wrap code in triple backticks (```)
+- Do NOT use markdown code block syntax
+- The code must be valid JavaScript/Python/HTML/CSS that can be written directly to the file
+
 Respond in JSON format:
 {{
-    "code": "complete file content",
+    "code": "complete file content as raw string",
     "changes_made": ["list of key changes"],
     "notes": "important implementation notes",
     "preserved": ["list of things preserved from original"]
 }}"""
         
         try:
-            response = self.ai_service.client.chat.completions.create(
-                model=self.ai_service.model,
-                messages=[
-                    {"role": "system", "content": "You are an expert Django developer generating production-ready code."},
+            # GPT-5 models use max_completion_tokens instead of max_tokens
+            api_params = {
+                "model": self.ai_service.model,
+                "messages": [
+                    {"role": "system", "content": "You are an expert Django developer generating production-ready code. CRITICAL: Return ONLY valid JSON with raw code strings. Do NOT wrap code in markdown code blocks (```). Do NOT use triple backticks. The 'code' field must contain raw, unformatted code that can be written directly to files."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.2,
-                response_format={"type": "json_object"}
-            )
+                "temperature": 0.2,
+                "response_format": {"type": "json_object"}
+            }
+            if self.ai_service.model.startswith('gpt-5'):
+                api_params["max_completion_tokens"] = 4000
+            else:
+                api_params["max_tokens"] = 4000
+            
+            response = self.ai_service.client.chat.completions.create(**api_params)
             
             try:
                 result = json.loads(response.choices[0].message.content)
+                
+                # DEFENSIVE: Strip markdown code blocks if AI ignores instructions
+                if 'code' in result and isinstance(result['code'], str):
+                    code = result['code']
+                    # Remove leading/trailing markdown code blocks
+                    if code.startswith('```'):
+                        # Find first newline after opening ```
+                        first_newline = code.find('\n')
+                        if first_newline != -1:
+                            code = code[first_newline + 1:]
+                    if code.endswith('```'):
+                        code = code[:-3]
+                    # Remove trailing markdown indicators
+                    if code.rstrip().endswith('```'):
+                        code = code.rstrip()[:-3]
+                    result['code'] = code.strip()
+                
                 result['success'] = True
                 return result
             except json.JSONDecodeError as e:
@@ -340,6 +377,55 @@ Respond in JSON format:
             'before': before,
             'after': new_content,
             'file_path': file_path
+        }
+    
+    def generate_diff(self, file_path: str, new_content: str) -> Dict[str, Any]:
+        """
+        Generate a unified diff between current file and new content.
+        
+        Args:
+            file_path: Relative path to the file
+            new_content: New content to compare
+            
+        Returns:
+            Dictionary with diff information
+        """
+        import difflib
+        
+        full_path = self.base_path / file_path
+        
+        if full_path.exists():
+            with open(full_path, 'r', encoding='utf-8') as f:
+                original = f.read()
+            file_exists = True
+        else:
+            original = ""
+            file_exists = False
+        
+        # Generate unified diff
+        original_lines = original.splitlines(keepends=True)
+        new_lines = new_content.splitlines(keepends=True)
+        
+        diff = list(difflib.unified_diff(
+            original_lines,
+            new_lines,
+            fromfile=f'{file_path} (current)',
+            tofile=f'{file_path} (modified)',
+            lineterm=''
+        ))
+        
+        # Count changes
+        additions = sum(1 for line in diff if line.startswith('+') and not line.startswith('+++'))
+        deletions = sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+        
+        return {
+            'file_path': file_path,
+            'file_exists': file_exists,
+            'diff': ''.join(diff),
+            'additions': additions,
+            'deletions': deletions,
+            'original_content': original,
+            'new_content': new_content
         }
     
     def apply_changes(self, file_path: str, content: str, backup: bool = True) -> Dict[str, Any]:

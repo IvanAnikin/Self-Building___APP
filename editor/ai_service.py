@@ -93,12 +93,18 @@ environment where users can write and save code."""
             
             # Call OpenAI API
             print(f"  🌐 AI Service: Calling OpenAI API (model: {self.model})...")
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                max_tokens=500,
-                temperature=0.7
-            )
+            # GPT-5 models use max_completion_tokens instead of max_tokens
+            api_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": 0.7
+            }
+            if self.model.startswith('gpt-5'):
+                api_params["max_completion_tokens"] = 500
+            else:
+                api_params["max_tokens"] = 500
+            
+            response = self.client.chat.completions.create(**api_params)
             
             ai_response = response.choices[0].message.content
             print(f"  ✅ AI Service: Received response ({len(ai_response)} chars)")
