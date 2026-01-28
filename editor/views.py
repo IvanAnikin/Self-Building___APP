@@ -1,20 +1,112 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.utils import timezone
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib import messages
 import json
-from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
+from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution, UserProfile, FeatureVersion, TestResult
 from .ai_service import ai_service
 from .code_executor import code_executor
 from .feature_implementer import feature_implementer
 
+
+# Phase 5: Authentication Views
+
+def login_view(request):
+    """Handle user login"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            
+            # Initialize user profile if it doesn't exist
+            if not hasattr(user, 'profile'):
+                UserProfile.objects.create(
+                    user=user,
+                    git_branch_name=f"user-{user.id}-workspace"
+                )
+            
+            # Initialize git branch for user
+            from .git_service import GitService
+            git_service = GitService(user)
+            git_service.initialize_user_branch()
+            
+            return redirect('index')
+        else:
+            messages.error(request, 'Invalid username or password')
+    
+    return render(request, 'editor/login.html')
+
+
+def register_view(request):
+    """Handle user registration"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        password_confirm = request.POST.get('password_confirm')
+        
+        # Validate inputs
+        if not username or not password:
+            messages.error(request, 'Username and password are required')
+            return render(request, 'editor/register.html')
+        
+        if password != password_confirm:
+            messages.error(request, 'Passwords do not match')
+            return render(request, 'editor/register.html')
+        
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, 'Username already exists')
+            return render(request, 'editor/register.html')
+        
+        # Create user
+        user = User.objects.create_user(username=username, email=email, password=password)
+        
+        # Create user profile
+        UserProfile.objects.create(
+            user=user,
+            git_branch_name=f"user-{user.id}-workspace"
+        )
+        
+        # Initialize git branch
+        from .git_service import GitService
+        git_service = GitService(user)
+        git_service.initialize_user_branch()
+        
+        # Log the user in
+        login(request, user)
+        messages.success(request, 'Account created successfully!')
+        
+        return redirect('index')
+    
+    return render(request, 'editor/register.html')
+
+
+def logout_view(request):
+    """Handle user logout"""
+    logout(request)
+    return redirect('login')
+
+
+# Main application view
+@login_required
 def index(request):
     """Main view for the editor and chatbot interface"""
-    return render(request, 'editor/index.html')
+    return render(request, 'editor/index.html', {
+        'user': request.user
+    })
 
+@login_required
 def chat(request):
     """Handle chat messages from the user with AI integration"""
     print("\n" + "="*80)
-    print("🔵 CHAT REQUEST RECEIVED")
+    print(f"🔵 CHAT REQUEST RECEIVED from user: {request.user.username}")
     print("="*80)
     
     if request.method == 'POST':
@@ -34,9 +126,9 @@ def chat(request):
                     'message': 'Message cannot be empty'
                 }, status=400)
             
-            # Get recent conversation history for context
-            print(f"🔍 Fetching conversation history...")
-            recent_messages = ChatMessage.objects.order_by('-timestamp')[:10]
+            # Get recent conversation history for context (USER-SPECIFIC)
+            print(f"🔍 Fetching conversation history for user {request.user.username}...")
+            recent_messages = ChatMessage.objects.filter(user=request.user).order_by('-timestamp')[:10]
             conversation_history = [
                 {
                     'message': msg.message,
@@ -66,29 +158,32 @@ def chat(request):
             print(f"✅ AI Response Status: {ai_status}")
             print(f"💬 AI Response (first 100 chars): {response_message[:100]}...")
             
-            # Save user message to database
+            # Save user message to database (WITH USER)
             print(f"💾 Saving user message to database...")
             user_chat = ChatMessage.objects.create(
+                user=request.user,
                 message=user_message,
                 response='',
                 is_user=True
             )
             print(f"✅ User message saved (ID: {user_chat.id})")
             
-            # Save AI response to database
+            # Save AI response to database (WITH USER)
             print(f"💾 Saving AI response to database...")
             bot_chat = ChatMessage.objects.create(
+                user=request.user,
                 message=response_message,
                 response='',
                 is_user=False
             )
             print(f"✅ AI response saved (ID: {bot_chat.id})")
             
-            # Check if this is a feature request and save it
+            # Check if this is a feature request and save it (WITH USER)
             is_feature_req = _is_feature_request(user_message)
             print(f"🔍 Feature Request Detected: {is_feature_req}")
             if is_feature_req:
                 feature = FeatureRequest.objects.create(
+                    user=request.user,
                     description=user_message,
                     status='pending'
                 )
@@ -145,6 +240,7 @@ def _is_feature_request(message):
     message_lower = message.lower()
     return any(pattern in message_lower for pattern in feature_patterns)
 
+@login_required
 def save_code(request):
     """Handle saving code from the editor to database"""
     if request.method == 'POST':
@@ -172,8 +268,9 @@ def save_code(request):
                 }
                 language = language_map.get(ext, ext)
             
-            # Save to database
+            # Save to database (WITH USER)
             snippet = CodeSnippet.objects.create(
+                user=request.user,
                 filename=filename,
                 code=code,
                 language=language
@@ -194,10 +291,11 @@ def save_code(request):
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'}, status=405)
 
+@login_required
 def execute_code(request):
     """Handle code execution from the editor"""
     print("\n" + "="*80)
-    print("🔵 CODE EXECUTION REQUEST RECEIVED")
+    print(f"🔵 CODE EXECUTION REQUEST from user: {request.user.username}")
     print("="*80)
     
     if request.method == 'POST':
@@ -228,9 +326,10 @@ def execute_code(request):
             print(f"✅ Execution Status: {result['status']}")
             print(f"📤 Return Code: {result.get('returncode', 'N/A')}")
             
-            # Save execution record to database
+            # Save execution record to database (WITH USER)
             print(f"💾 Saving execution record to database...")
             execution = CodeExecution.objects.create(
+                user=request.user,
                 code=code,
                 language=language,
                 filename=filename,
@@ -273,6 +372,7 @@ def execute_code(request):
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 
 
+@login_required
 def analyze_feature(request):
     """Analyze a feature request and create implementation plan"""
     print("\n" + "="*80)
@@ -342,6 +442,7 @@ def analyze_feature(request):
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 
 
+@login_required
 def implement_feature(request):
     """Generate and apply code for a feature request"""
     print("\n" + "="*80)
@@ -466,10 +567,11 @@ def implement_feature(request):
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 
 
+@login_required
 def list_features(request):
-    """List all feature requests with their status"""
+    """List all feature requests for the current user"""
     try:
-        features = FeatureRequest.objects.all()[:20]  # Last 20 features
+        features = FeatureRequest.objects.filter(user=request.user)[:20]  # Last 20 features
         
         features_data = [{
             'id': f.id,
@@ -493,6 +595,7 @@ def list_features(request):
         }, status=500)
 
 
+@login_required
 def preview_feature_changes(request):
     """Preview changes that would be made by a feature implementation"""
     print("\n" + "="*80)
@@ -577,6 +680,7 @@ def preview_feature_changes(request):
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 
 
+@login_required
 def apply_feature_changes(request):
     """Apply approved feature changes to actual files"""
     print("\n" + "="*80)
@@ -659,16 +763,64 @@ def apply_feature_changes(request):
                 feature.status = 'completed'
                 feature.completed_at = timezone.now()
                 print(f"✅ Feature completed successfully")
+                
+                # Phase 5: Git commit integration
+                try:
+                    from .git_service import GitService
+                    
+                    git_service = GitService(request.user)
+                    
+                    # Get list of modified files
+                    modified_files = [f['file'] for f in applied_files]
+                    feature.files_modified = modified_files
+                    
+                    # Commit changes to user's branch
+                    commit_message = f"feat: {feature.description[:100]}"
+                    commit_hash = git_service.commit_changes(
+                        message=commit_message,
+                        files=modified_files
+                    )
+                    
+                    if commit_hash:
+                        feature.git_commit_hash = commit_hash
+                        print(f"✅ Git commit created: {commit_hash[:7]}")
+                        
+                        # Create FeatureVersion record
+                        code_snapshot = {f['file']: file_info.get('code', '') 
+                                       for f, file_info in zip(applied_files, generated_files)}
+                        
+                        FeatureVersion.objects.create(
+                            user=request.user,
+                            feature=feature,
+                            commit_hash=commit_hash,
+                            commit_message=commit_message,
+                            files_changed=modified_files,
+                            code_snapshot=code_snapshot,
+                            status='active'
+                        )
+                        print(f"✅ FeatureVersion record created")
+                    else:
+                        print(f"⚠️ Git commit failed, but feature applied successfully")
+                        
+                except Exception as git_error:
+                    print(f"⚠️ Git commit error (feature still applied): {git_error}")
+                    # Don't fail the entire operation if git fails
             
             feature.save()
             
-            return JsonResponse({
+            response_data = {
                 'status': 'success' if not errors else 'partial',
                 'message': f'Applied changes to {len(applied_files)} file(s)',
                 'applied_files': applied_files,
                 'errors': errors,
                 'feature_id': feature.id
-            })
+            }
+            
+            # Add commit hash to response if available
+            if hasattr(feature, 'git_commit_hash') and feature.git_commit_hash:
+                response_data['commit_hash'] = feature.git_commit_hash
+            
+            return JsonResponse(response_data)
             
         except Exception as e:
             print(f"❌ ERROR in apply_feature_changes: {str(e)}")
@@ -688,6 +840,7 @@ def apply_feature_changes(request):
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
 
 
+@login_required
 def reject_feature_changes(request):
     """Reject feature changes and mark as rejected"""
     print("\n" + "="*80)
@@ -738,3 +891,70 @@ def reject_feature_changes(request):
             }, status=500)
     
     return JsonResponse({'status': 'error', 'error': 'Only POST requests are allowed'}, status=405)
+
+
+# Phase 5: Version Control Endpoints
+
+@login_required
+def get_version_history(request):
+    """Get version history for the current user"""
+    try:
+        from .git_service import GitService
+        
+        git_service = GitService(request.user)
+        commits = git_service.get_commit_history(limit=50)
+        
+        return JsonResponse({
+            'status': 'success',
+            'versions': commits,
+            'current_branch': git_service.branch_name
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Error getting version history: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def switch_version(request):
+    """Switch to a specific version (commit)"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            commit_hash = data.get('commit_hash')
+            
+            if not commit_hash:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'commit_hash is required'
+                }, status=400)
+            
+            from .git_service import GitService
+            
+            git_service = GitService(request.user)
+            success = git_service.checkout_commit(commit_hash)
+            
+            if success:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Switched to version {commit_hash[:7]}',
+                    'commit_hash': commit_hash
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'error': 'Failed to switch version'
+                }, status=500)
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Error switching version: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'error': 'Only POST requests are allowed'
+    }, status=405)

@@ -22,6 +22,11 @@ from editor import views as editor_views
 # API endpoints without language prefix (fixes 302 redirect issue)
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
+    # Phase 5: Authentication endpoints (without language prefix)
+    path('accounts/login/', editor_views.login_view, name='login'),
+    path('accounts/logout/', editor_views.logout_view, name='logout'),
+    path('accounts/register/', editor_views.register_view, name='register'),
+    # API endpoints
     path('api/chat/', editor_views.chat, name='chat'),
     path('api/save/', editor_views.save_code, name='save_code'),
     path('api/execute/', editor_views.execute_code, name='execute_code'),
@@ -33,6 +38,9 @@ urlpatterns = [
     path('api/features/preview/', editor_views.preview_feature_changes, name='preview_feature_changes'),
     path('api/features/apply/', editor_views.apply_feature_changes, name='apply_feature_changes'),
     path('api/features/reject/', editor_views.reject_feature_changes, name='reject_feature_changes'),
+    # Phase 5: Version control endpoints
+    path('api/versions/', editor_views.get_version_history, name='get_version_history'),
+    path('api/versions/switch/', editor_views.switch_version, name='switch_version'),
 ]
 
 # Language-prefixed URLs
