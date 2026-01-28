@@ -604,3 +604,149 @@ async function rejectFeatureChanges(featureId) {
         console.error('Reject changes error:', error);
     }
 }
+
+// ============================================================================
+// Phase 5: Version Control Functions
+// ============================================================================
+
+let currentVersionHash = null;
+
+// Load and display version history
+async function loadVersionHistory() {
+    const timeline = document.getElementById('versionTimeline');
+    
+    // Show loading state
+    timeline.innerHTML = '<div class="loading-versions"><span>Loading versions...</span></div>';
+    
+    try {
+        const response = await fetch('/api/versions/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            displayVersionHistory(data.versions, data.current_branch);
+            
+            // Store current version (latest commit)
+            if (data.versions && data.versions.length > 0) {
+                currentVersionHash = data.versions[0].hash;
+            }
+        } else {
+            timeline.innerHTML = `<div class="version-error">⚠️ ${data.error || 'Failed to load versions'}</div>`;
+        }
+        
+    } catch (error) {
+        console.error('Error loading versions:', error);
+        timeline.innerHTML = '<div class="version-error">❌ Error loading version history</div>';
+    }
+}
+
+// Display version history in the UI
+function displayVersionHistory(versions, currentBranch) {
+    const timeline = document.getElementById('versionTimeline');
+    
+    if (!versions || versions.length === 0) {
+        timeline.innerHTML = `
+            <div class="empty-versions">
+                <div class="icon">📋</div>
+                <p>No version history yet.</p>
+                <p style="font-size: 0.85rem;">Versions will appear here after you apply features.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    versions.forEach((version, index) => {
+        const isCurrentVersion = index === 0;
+        const versionClass = isCurrentVersion ? 'version-item current' : 'version-item';
+        const shortHash = version.hash.substring(0, 7);
+        
+        html += `
+            <div class="${versionClass}" onclick="switchToVersion('${version.hash}', '${shortHash}')">
+                <div class="version-hash">${shortHash}</div>
+                <div class="version-message">${escapeHtml(version.message)}</div>
+                <div class="version-meta">
+                    <span class="version-date">📅 ${version.date}</span>
+                    <span class="version-author">👤 ${escapeHtml(version.author)}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    timeline.innerHTML = html;
+}
+
+// Switch to a specific version
+async function switchToVersion(commitHash, shortHash) {
+    if (!confirm(`Switch to version ${shortHash}?\n\nThis will checkout this specific commit.`)) {
+        return;
+    }
+    
+    addMessage(`🔄 Switching to version ${shortHash}...`, false);
+    
+    try {
+        const response = await fetch('/api/versions/switch/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ commit_hash: commitHash })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addMessage(`✅ ${data.message}`, false);
+            addMessage(`💡 Refresh the page to see the changes.`, false);
+            
+            // Reload version history
+            loadVersionHistory();
+        } else {
+            addMessage(`❌ Failed to switch version: ${data.error}`, false);
+        }
+        
+    } catch (error) {
+        addMessage(`❌ Error switching version: ${error.message}`, false);
+        console.error('Switch version error:', error);
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Refresh version history button handler
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refreshVersionsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadVersionHistory();
+        });
+    }
+    
+    // Load version history on page load
+    loadVersionHistory();
+});
+
+// Update the approveFeatureChanges function to refresh versions after applying
+const originalApproveFeatureChanges = window.approveFeatureChanges;
+if (typeof originalApproveFeatureChanges === 'function') {
+    window.approveFeatureChanges = async function(featureId) {
+        await originalApproveFeatureChanges(featureId);
+        
+        // Reload version history after successful application
+        setTimeout(() => {
+            loadVersionHistory();
+        }, 1000);
+    };
+}

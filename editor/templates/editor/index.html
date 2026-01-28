@@ -102,6 +102,20 @@ if __name__ == "__main__":
                     <textarea id="chatInput" placeholder="{% trans 'Describe the feature you want to add...' %}" rows="3"></textarea>
                     <button id="sendBtn" class="btn btn-primary">{% trans "Send" %}</button>
                 </div>
+                
+                <!-- Phase 5: Version History Panel -->
+                <div class="version-history-section">
+                    <div class="version-history-header">
+                        <span class="icon">📊</span>
+                        <h3>{% trans "Version History" %}</h3>
+                        <button id="refreshVersionsBtn" class="btn btn-icon" title="{% trans 'Refresh' %}">🔄</button>
+                    </div>
+                    <div id="versionTimeline" class="version-timeline">
+                        <div class="loading-versions">
+                            <span>{% trans "Loading versions..." %}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

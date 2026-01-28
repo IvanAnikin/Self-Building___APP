@@ -763,16 +763,64 @@ def apply_feature_changes(request):
                 feature.status = 'completed'
                 feature.completed_at = timezone.now()
                 print(f"✅ Feature completed successfully")
+                
+                # Phase 5: Git commit integration
+                try:
+                    from .git_service import GitService
+                    
+                    git_service = GitService(request.user)
+                    
+                    # Get list of modified files
+                    modified_files = [f['file'] for f in applied_files]
+                    feature.files_modified = modified_files
+                    
+                    # Commit changes to user's branch
+                    commit_message = f"feat: {feature.description[:100]}"
+                    commit_hash = git_service.commit_changes(
+                        message=commit_message,
+                        files=modified_files
+                    )
+                    
+                    if commit_hash:
+                        feature.git_commit_hash = commit_hash
+                        print(f"✅ Git commit created: {commit_hash[:7]}")
+                        
+                        # Create FeatureVersion record
+                        code_snapshot = {f['file']: file_info.get('code', '') 
+                                       for f, file_info in zip(applied_files, generated_files)}
+                        
+                        FeatureVersion.objects.create(
+                            user=request.user,
+                            feature=feature,
+                            commit_hash=commit_hash,
+                            commit_message=commit_message,
+                            files_changed=modified_files,
+                            code_snapshot=code_snapshot,
+                            status='active'
+                        )
+                        print(f"✅ FeatureVersion record created")
+                    else:
+                        print(f"⚠️ Git commit failed, but feature applied successfully")
+                        
+                except Exception as git_error:
+                    print(f"⚠️ Git commit error (feature still applied): {git_error}")
+                    # Don't fail the entire operation if git fails
             
             feature.save()
             
-            return JsonResponse({
+            response_data = {
                 'status': 'success' if not errors else 'partial',
                 'message': f'Applied changes to {len(applied_files)} file(s)',
                 'applied_files': applied_files,
                 'errors': errors,
                 'feature_id': feature.id
-            })
+            }
+            
+            # Add commit hash to response if available
+            if hasattr(feature, 'git_commit_hash') and feature.git_commit_hash:
+                response_data['commit_hash'] = feature.git_commit_hash
+            
+            return JsonResponse(response_data)
             
         except Exception as e:
             print(f"❌ ERROR in apply_feature_changes: {str(e)}")
