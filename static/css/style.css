@@ -741,3 +741,35 @@ header h1 {
 .review-changes-btn {
     margin-top: 10px;
 }
+
+/* Phase 5: User Authentication Styles */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: rgba(79, 172, 254, 0.1);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    border-radius: 8px;
+}
+
+.user-icon {
+    font-size: 1.2rem;
+}
+
+.username {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.user-info .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}

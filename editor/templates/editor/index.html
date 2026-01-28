@@ -18,21 +18,28 @@
                     <h1>🚀 {% trans "Self-Building App" %}</h1>
                     <p class="subtitle">{% trans "AI-Powered Code Editor - Request features, watch them come to life" %}</p>
                 </div>
-                <div class="language-switcher">
-                    <form action="{% url 'set_language' %}" method="post" id="language-form">
-                        {% csrf_token %}
-                        <input name="next" type="hidden" value="{{ request.path }}" />
-                        <select name="language" id="language-select" onchange="document.getElementById('language-form').submit()">
-                            {% get_current_language as LANGUAGE_CODE %}
-                            {% get_available_languages as LANGUAGES %}
-                            {% get_language_info_list for LANGUAGES as languages %}
-                            {% for language in languages %}
-                                <option value="{{ language.code }}"{% if language.code == LANGUAGE_CODE %} selected{% endif %}>
-                                    {{ language.name_local }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </form>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span class="user-icon">👤</span>
+                        <span class="username">{{ user.username }}</span>
+                        <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm">{% trans "Logout" %}</a>
+                    </div>
+                    <div class="language-switcher">
+                        <form action="{% url 'set_language' %}" method="post" id="language-form">
+                            {% csrf_token %}
+                            <input name="next" type="hidden" value="{{ request.path }}" />
+                            <select name="language" id="language-select" onchange="document.getElementById('language-form').submit()">
+                                {% get_current_language as LANGUAGE_CODE %}
+                                {% get_available_languages as LANGUAGES %}
+                                {% get_language_info_list for LANGUAGES as languages %}
+                                {% for language in languages %}
+                                    <option value="{{ language.code }}"{% if language.code == LANGUAGE_CODE %} selected{% endif %}>
+                                        {{ language.name_local }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
                 </div>
             </div>
         </header>

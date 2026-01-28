@@ -1,15 +1,106 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.utils import timezone
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib import messages
 import json
-from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution
+from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution, UserProfile, FeatureVersion, TestResult
 from .ai_service import ai_service
 from .code_executor import code_executor
 from .feature_implementer import feature_implementer
 
+
+# Phase 5: Authentication Views
+
+def login_view(request):
+    """Handle user login"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            
+            # Initialize user profile if it doesn't exist
+            if not hasattr(user, 'profile'):
+                UserProfile.objects.create(
+                    user=user,
+                    git_branch_name=f"user-{user.id}-workspace"
+                )
+            
+            # Initialize git branch for user
+            from .git_service import GitService
+            git_service = GitService(user)
+            git_service.initialize_user_branch()
+            
+            return redirect('index')
+        else:
+            messages.error(request, 'Invalid username or password')
+    
+    return render(request, 'editor/login.html')
+
+
+def register_view(request):
+    """Handle user registration"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        password_confirm = request.POST.get('password_confirm')
+        
+        # Validate inputs
+        if not username or not password:
+            messages.error(request, 'Username and password are required')
+            return render(request, 'editor/register.html')
+        
+        if password != password_confirm:
+            messages.error(request, 'Passwords do not match')
+            return render(request, 'editor/register.html')
+        
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, 'Username already exists')
+            return render(request, 'editor/register.html')
+        
+        # Create user
+        user = User.objects.create_user(username=username, email=email, password=password)
+        
+        # Create user profile
+        UserProfile.objects.create(
+            user=user,
+            git_branch_name=f"user-{user.id}-workspace"
+        )
+        
+        # Initialize git branch
+        from .git_service import GitService
+        git_service = GitService(user)
+        git_service.initialize_user_branch()
+        
+        # Log the user in
+        login(request, user)
+        messages.success(request, 'Account created successfully!')
+        
+        return redirect('index')
+    
+    return render(request, 'editor/register.html')
+
+
+def logout_view(request):
+    """Handle user logout"""
+    logout(request)
+    return redirect('login')
+
+
+# Main application view
+@login_required
 def index(request):
     """Main view for the editor and chatbot interface"""
-    return render(request, 'editor/index.html')
+    return render(request, 'editor/index.html', {
+        'user': request.user
+    })
 
 def chat(request):
     """Handle chat messages from the user with AI integration"""
