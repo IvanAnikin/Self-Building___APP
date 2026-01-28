@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-22 18:33+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n >= 2 && n "
+"<= 4 && n % 1 == 0) ? 1: (n % 1 != 0 ) ? 2 : 3;\n"
+#: editor/templates/editor/index.html:9
+msgid "Self-Building App - Code Editor"
+msgstr "Samostavící aplikace - Editor kódu"
+
+#: editor/templates/editor/index.html:18
+msgid "Self-Building App"
+msgstr "Samostavící aplikace"
+
+#: editor/templates/editor/index.html:19
+msgid "AI-Powered Code Editor - Request features, watch them come to life"
+msgstr "Editor kódu s umělou inteligencí - Požádejte o funkce a sledujte, jak ožívají"
+
+#: editor/templates/editor/index.html:46
+msgid "filename.py"
+msgstr "nazev_souboru.py"
+
+#: editor/templates/editor/index.html:49
+msgid "Save"
+msgstr "Uložit"
+
+#: editor/templates/editor/index.html:50
+msgid "Run"
+msgstr "Spustit"
+
+#: editor/templates/editor/index.html:53
+msgid "Welcome to Self-Building App!"
+msgstr "Vítejte v Samostavící aplikaci!"
+
+#: editor/templates/editor/index.html:54
+msgid "This is a Python code editor with AI-powered feature development."
+msgstr "Toto je editor Python kódu s vývojem funkcí pomocí umělé inteligence."
+
+#: editor/templates/editor/index.html:57
+msgid "A simple hello world function"
+msgstr "Jednoduchá funkce hello world"
+
+#: editor/templates/editor/index.html:58
+msgid "Hello, World!"
+msgstr "Ahoj, světe!"
+
+#: editor/templates/editor/index.html:59
+msgid "Welcome to the Self-Building App!"
+msgstr ""
+
+#: editor/templates/editor/index.html:71
+msgid "AI Assistant"
+msgstr "AI asistent"
+
+#: editor/templates/editor/index.html:76
+msgid "AI Assistant:"
+msgstr "AI asistent:"
+
+#: editor/templates/editor/index.html:77
+msgid ""
+"Hello! I'm your AI assistant. Tell me what features you'd like to add to "
+"this application, and I'll help develop them for you."
+msgstr ""
+
+#: editor/templates/editor/index.html:82
+msgid "Describe the feature you want to add..."
+msgstr "Popište funkci, kterou chcete přidat..."
+
+#: editor/templates/editor/index.html:83
+msgid "Send"
+msgstr "Odeslat"
+
+#: selfbuilding_app/settings.py:114
+msgid "English"
+msgstr "Angličtina"
+
+#: selfbuilding_app/settings.py:115
+msgid "Czech"
+msgstr "Čeština"
+
+#: selfbuilding_app/settings.py:116
+msgid "Japanese"
+msgstr "Japonština"
+
+#: selfbuilding_app/settings.py:117
+msgid "Russian"
+msgstr "Ruština"
