@@ -212,7 +212,7 @@ header h1 {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-secondary);
+    background-color: #2d333b;  /* Brighter background for chatbot */
     min-width: 350px;
 }
 
@@ -221,7 +221,7 @@ header h1 {
     align-items: center;
     gap: 0.5rem;
     padding: 1rem 1.5rem;
-    background-color: var(--bg-tertiary);
+    background-color: #3a4149;  /* Brighter header for chatbot */
     border-bottom: 1px solid var(--border-color);
 }
 
