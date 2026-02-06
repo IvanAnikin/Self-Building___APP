@@ -86,6 +86,13 @@ if __name__ == "__main__":
         </div>
     </div>
     
+    <script>
+        // Pass Django URLs to JavaScript
+        window.API_URLS = {
+            chat: "{% url 'chat' %}",
+            save: "{% url 'save_code' %}"
+        };
+    </script>
     <script src="{% static 'js/main.js' %}"></script>
 </body>
 </html>

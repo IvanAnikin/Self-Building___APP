@@ -108,14 +108,20 @@ async function sendMessage() {
     sendBtn.disabled = true;
     
     try {
+        // Get current code from editor for context (optional)
+        const codeContext = editor.value.trim();
+        
         // Send message to backend
-        const response = await fetch('/api/chat/', {
+        const response = await fetch(window.API_URLS.chat, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({ 
+                message: message,
+                code_context: codeContext || null
+            })
         });
         
         const data = await response.json();
@@ -125,6 +131,11 @@ async function sendMessage() {
         
         if (data.status === 'success') {
             addMessage(data.response, false);
+            
+            // Show AI status badge if available
+            if (data.ai_enabled) {
+                console.log('AI service is enabled and processing requests');
+            }
         } else {
             addMessage('Sorry, there was an error processing your request.', false);
         }
@@ -154,7 +165,7 @@ document.getElementById('saveBtn').addEventListener('click', async function() {
     const filename = filenameInput.value;
     
     try {
-        const response = await fetch('/api/save/', {
+        const response = await fetch(window.API_URLS.save, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

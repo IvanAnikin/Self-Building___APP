@@ -17,12 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.i18n import i18n_patterns
+from editor import views as editor_views
 
+# API endpoints without language prefix (fixes 302 redirect issue)
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
+    path('api/chat/', editor_views.chat, name='chat'),
+    path('api/save/', editor_views.save_code, name='save_code'),
 ]
 
+# Language-prefixed URLs
 urlpatterns += i18n_patterns(
     path('admin/', admin.site.urls),
-    path('', include('editor.urls')),
+    path('', editor_views.index, name='index'),
 )

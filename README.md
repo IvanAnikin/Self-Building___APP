@@ -6,10 +6,13 @@ A modern Python Django web application featuring a dark mode code editor with an
 
 ✨ **Dark Mode UI** - Beautiful, modern dark theme interface  
 📝 **Code Editor** - Full-featured text editor (2/3 of screen width)  
-🤖 **AI Assistant Chatbot** - Interactive chatbot interface (1/3 of screen width)  
-💾 **Save Functionality** - Save your code snippets  
+🤖 **AI Assistant Chatbot** - Interactive AI-powered chatbot with context awareness  
+💬 **Conversation History** - Chat messages are saved and used for context  
+💾 **Save Functionality** - Save your code snippets to database  
+🗄️ **Feature Request Tracking** - Automatic detection and tracking of feature requests  
 ▶️ **Run Button** - Execute your code (placeholder for future implementation)  
 🎨 **Responsive Design** - Works on desktop and tablet devices  
+🌐 **Multi-language Support** - English, Czech, Japanese, and Russian translations  
 
 ## Screenshots
 
@@ -24,6 +27,7 @@ A modern Python Django web application featuring a dark mode code editor with an
 ### Prerequisites
 - Python 3.8 or higher
 - pip (Python package manager)
+- OpenAI API key (optional, for AI-powered responses)
 
 ### Setup Instructions
 
@@ -38,17 +42,30 @@ A modern Python Django web application featuring a dark mode code editor with an
    pip install -r requirements.txt
    ```
 
-3. **Run database migrations**
+3. **Configure environment variables (optional for AI features)**
+   
+   Edit the `.env` file (already included in repository) and add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your-actual-openai-api-key-here
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+   
+   **Note:** The application works without an API key using fallback responses. To enable AI-powered intelligent responses, you need to:
+   - Sign up at [OpenAI Platform](https://platform.openai.com/)
+   - Generate an API key from your account dashboard
+   - Add the key to your `.env` file
+
+4. **Run database migrations**
    ```bash
    python manage.py migrate
    ```
 
-4. **Start the development server**
+5. **Start the development server**
    ```bash
    python manage.py runserver
    ```
 
-5. **Open your browser**
+6. **Open your browser**
    Navigate to `http://localhost:8000`
 
 ## Usage
@@ -61,10 +78,18 @@ A modern Python Django web application featuring a dark mode code editor with an
 - Tab key inserts 4 spaces for proper code indentation
 
 ### AI Assistant
-- The chatbot appears on the right side (occupies 1/3 of the screen)
-- Type your feature request in the text area at the bottom
-- Press **Send** or hit Enter to submit your request
-- The AI will respond with acknowledgment (full AI integration coming soon)
+- The AI chatbot appears on the right side (occupies 1/3 of the screen)
+- Type your message or feature request in the text area at the bottom
+- Press **Send** or hit Enter to submit your message
+- The AI assistant responds with context-aware answers
+- **With OpenAI API key**: Get intelligent, context-aware responses powered by GPT-4o-mini
+- **Without API key**: Get helpful fallback responses with basic functionality
+- The assistant can:
+  - Answer coding questions
+  - Help debug code issues
+  - Acknowledge and track feature requests
+  - Provide guidance on implementation
+  - Understand the code currently in your editor for better context
 
 ### Feature Requests
 Users can request features like:
@@ -73,7 +98,11 @@ Users can request features like:
 - "Add syntax highlighting"
 - "Implement code execution"
 
-The chatbot will acknowledge requests and, in future versions, will automatically develop and integrate the requested features.
+The chatbot will:
+- Acknowledge your request with intelligent responses
+- Save feature requests to the database automatically
+- Track request status (pending, processing, completed, failed)
+- Provide guidance on implementation approaches (when AI is enabled)
 
 ## Project Structure
 
@@ -101,10 +130,12 @@ Self-Building___APP/
 
 ## Technology Stack
 
-- **Backend**: Django 6.0+
+- **Backend**: Django 4.2+
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
+- **AI Integration**: OpenAI API (GPT-4o-mini)
 - **Database**: SQLite (default, can be configured for PostgreSQL/MySQL)
 - **Styling**: Custom CSS with dark mode theme
+- **Internationalization**: Django i18n with 4 language translations
 
 ## Database Models
 
@@ -121,16 +152,46 @@ Tracks feature requests made by users and their implementation status.
 
 - `GET /` - Main application interface
 - `POST /api/chat/` - Send message to AI assistant
+  - Request: `{ "message": "your message", "code_context": "optional code" }`
+  - Response: `{ "status": "success", "response": "AI response", "ai_enabled": true/false }`
 - `POST /api/save/` - Save code snippet
+  - Request: `{ "code": "your code", "filename": "filename.py" }`
+  - Response: `{ "status": "success", "message": "Code saved", "snippet_id": 1 }`
 
 ## Future Roadmap
 
-🔄 **Phase 1** (Current) - Basic UI and chat interface  
-🔄 **Phase 2** - AI agent integration for processing feature requests  
-⏳ **Phase 3** - Automatic code generation and feature implementation  
-⏳ **Phase 4** - Code execution environment  
-⏳ **Phase 5** - User authentication and project management  
-⏳ **Phase 6** - Real-time collaboration features  
+✅ **Phase 1: Foundation** (Completed)
+- Basic code editor with tab support
+- Dark mode UI with responsive design
+- Chat interface with message history
+- Multi-language support (EN, CS, JA, RU)
+- Database models for tracking
+
+✅ **Phase 2: AI Integration** (Completed)
+- OpenAI API integration (GPT-4o-mini)
+- Context-aware intelligent responses
+- Conversation history memory
+- Feature request detection and tracking
+- Code context awareness
+- Graceful fallback mode
+
+⏳ **Phase 3: Code Execution** (Next)
+- Sandboxed Python execution environment
+- Real-time output display
+- Multiple language support
+- Error handling and debugging
+
+⏳ **Phase 4: Self-Modification**
+- AI-powered code generation
+- Automated file modification
+- Feature implementation from natural language
+- Version control integration
+
+⏳ **Phase 5: Collaboration**
+- User authentication and authorization
+- Project sharing and permissions
+- Real-time collaboration (WebSockets)
+- Code review system  
 
 ## Contributing
 
@@ -146,4 +207,12 @@ For issues, questions, or suggestions, please open an issue on GitHub.
 
 ---
 
-**Note**: This is an early-stage project. The AI-powered feature development capability is under active development. Currently, the chatbot provides acknowledgment responses, but full autonomous feature development will be implemented in future versions.
+**Note**: Phase 2 is complete! The AI-powered chatbot now features:
+- ✅ OpenAI API integration with intelligent, context-aware responses
+- ✅ Automatic conversation history tracking
+- ✅ Code context awareness (AI can see and understand your editor content)
+- ✅ Feature request detection and tracking in database
+- ✅ Fallback mode that works without an API key
+- ✅ Persistent storage for all chat messages and code snippets
+
+The application is fully functional without an API key using smart fallback responses. Add an OpenAI API key to unlock the full AI capabilities!
