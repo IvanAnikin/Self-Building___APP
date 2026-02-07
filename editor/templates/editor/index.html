@@ -44,22 +44,27 @@
             </div>
         </header>
         <div class="main-content">
-            <!-- Editor Section (2/3 width) -->
-            <div class="editor-section">
-                <div class="editor-header">
-                    <div class="editor-title">
-                        <span class="icon">📝</span>
-                        <input type="text" id="filename" placeholder="{% trans 'filename.py' %}" value="main.py">
-                    </div>
-                    <div class="editor-controls">
-                        <button id="saveBtn" class="btn btn-primary">💾 {% trans "Save" %}</button>
-                        <button id="runBtn" class="btn btn-success">▶️ {% trans "Run" %}</button>
-                    </div>
-                </div>
-                <div class="editor-container">
-                    <!-- NEW: Line Numbers Section -->
-                    <div id="lineNumbers" class="line-numbers"></div>
-                    <textarea id="editor" class="editor" spellcheck="false"># {% trans "Welcome to Self-Building App!" %}
+            <!-- NEW: Independent scroll panes wrapper (left editor / right chat+history) -->
+            <div class="split-layout">
+                <!-- NEW: Left scroll pane -->
+                <div class="split-pane split-pane-left">
+                    <div class="split-pane-scroll">
+                        <!-- Editor Section (2/3 width) -->
+                        <div class="editor-section">
+                            <div class="editor-header">
+                                <div class="editor-title">
+                                    <span class="icon">📝</span>
+                                    <input type="text" id="filename" placeholder="{% trans 'filename.py' %}" value="main.py">
+                                </div>
+                                <div class="editor-controls">
+                                    <button id="saveBtn" class="btn btn-primary">💾 {% trans "Save" %}</button>
+                                    <button id="runBtn" class="btn btn-success">▶️ {% trans "Run" %}</button>
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <!-- NEW: Line Numbers Section -->
+                                <div id="lineNumbers" class="line-numbers"></div>
+                                <textarea id="editor" class="editor" spellcheck="false"># {% trans "Welcome to Self-Building App!" %}
 # {% trans "This is a Python code editor with AI-powered feature development." %}
 
 def hello_world():
@@ -71,48 +76,57 @@ if __name__ == "__main__":
     result = hello_world()
     print(result)
 </textarea>
-                </div>
-                <!-- Output Display Area -->
-                <div class="output-section" id="outputSection" style="display: none;">
-                    <div class="output-header">
-                        <div class="output-title">
-                            <span class="icon">📟</span>
-                            <span>{% trans "Output" %}</span>
-                        </div>
-                        <button id="clearOutputBtn" class="btn btn-secondary btn-sm">🗑️ {% trans "Clear" %}</button>
-                    </div>
-                    <pre id="outputContent" class="output-content"></pre>
-                </div>
-            </div>
-            <!-- Chatbot Section (1/3 width) -->
-            <div class="chatbot-section">
-                <div class="chatbot-header">
-                    <span class="icon">🤖</span>
-                    <h2>{% trans "AI Assistant" %}</h2>
-                </div>
-                <div id="chatMessages" class="chat-messages">
-                    <div class="message bot-message">
-                        <div class="message-content">
-                            <strong>{% trans "AI Assistant:" %}</strong>
-                            <p>{% trans "Hello! I'm your AI assistant. Tell me what features you'd like to add to this application, and I'll help develop them for you." %}</p>
+                            </div>
+                            <!-- Output Display Area -->
+                            <div class="output-section" id="outputSection" style="display: none;">
+                                <div class="output-header">
+                                    <div class="output-title">
+                                        <span class="icon">📟</span>
+                                        <span>{% trans "Output" %}</span>
+                                    </div>
+                                    <button id="clearOutputBtn" class="btn btn-secondary btn-sm">🗑️ {% trans "Clear" %}</button>
+                                </div>
+                                <pre id="outputContent" class="output-content"></pre>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="chat-input-container">
-                    <textarea id="chatInput" placeholder="{% trans 'Describe the feature you want to add...' %}" rows="3"></textarea>
-                    <button id="sendBtn" class="btn btn-primary">{% trans "Send" %}</button>
-                </div>
-                
-                <!-- Phase 5: Version History Panel -->
-                <div class="version-history-section">
-                    <div class="version-history-header">
-                        <span class="icon">📊</span>
-                        <h3>{% trans "Version History" %}</h3>
-                        <button id="refreshVersionsBtn" class="btn btn-icon" title="{% trans 'Refresh' %}">🔄</button>
-                    </div>
-                    <div id="versionTimeline" class="version-timeline">
-                        <div class="loading-versions">
-                            <span>{% trans "Loading versions..." %}</span>
+
+                <!-- NEW: Right scroll pane -->
+                <div class="split-pane split-pane-right">
+                    <div class="split-pane-scroll" id="rightPaneScroll">
+                        <!-- Chatbot Section (1/3 width) -->
+                        <div class="chatbot-section">
+                            <div class="chatbot-header">
+                                <span class="icon">🤖</span>
+                                <h2>{% trans "AI Assistant" %}</h2>
+                            </div>
+                            <div id="chatMessages" class="chat-messages">
+                                <div class="message bot-message">
+                                    <div class="message-content">
+                                        <strong>{% trans "AI Assistant:" %}</strong>
+                                        <p>{% trans "Hello! I'm your AI assistant. Tell me what features you'd like to add to this application, and I'll help develop them for you." %}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-input-container">
+                                <textarea id="chatInput" placeholder="{% trans 'Describe the feature you want to add...' %}" rows="3"></textarea>
+                                <button id="sendBtn" class="btn btn-primary">{% trans "Send" %}</button>
+                            </div>
+                            
+                            <!-- Phase 5: Version History Panel -->
+                            <div class="version-history-section">
+                                <div class="version-history-header">
+                                    <span class="icon">📊</span>
+                                    <h3>{% trans "Version History" %}</h3>
+                                    <button id="refreshVersionsBtn" class="btn btn-icon" title="{% trans 'Refresh' %}">🔄</button>
+                                </div>
+                                <div id="versionTimeline" class="version-timeline">
+                                    <div class="loading-versions">
+                                        <span>{% trans "Loading versions..." %}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
