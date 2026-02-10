@@ -56,6 +56,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Allow embedding in VS Code Simple Browser (iframe) during development
+X_FRAME_OPTIONS = 'ALLOWALL'
+
 ROOT_URLCONF = 'selfbuilding_app.urls'
 
 TEMPLATES = [
