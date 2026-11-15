@@ -58,6 +58,17 @@ class FeatureRequest(models.Model):
     test_iterations = models.IntegerField(default=0)
     last_test_result = models.TextField(blank=True, default='')
     
+    # Phase 6: Implementation engine tracking
+    implementation_engine = models.CharField(
+        max_length=20,
+        choices=[
+            ('legacy', 'Legacy (per-file)'),
+            ('codex', 'Codex CLI'),
+        ],
+        default='legacy',
+        blank=True
+    )
+    
     class Meta:
         ordering = ['-created_at']
     

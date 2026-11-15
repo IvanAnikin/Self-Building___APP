@@ -149,6 +149,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
+# Phase 6: Codex CLI Configuration
+CODEX_API_KEY = os.environ.get('CODEX_API_KEY', os.environ.get('OPENAI_API_KEY', ''))
+CODEX_TIMEOUT = int(os.environ.get('CODEX_TIMEOUT', '300'))       # seconds
+CODEX_SANDBOX_MODE = os.environ.get('CODEX_SANDBOX_MODE', 'workspace-write')
+
 
 # Phase 5: Authentication Settings
 LOGIN_URL = '/accounts/login/'

@@ -10,6 +10,7 @@ from .models import ChatMessage, CodeSnippet, FeatureRequest, CodeExecution, Use
 from .ai_service import ai_service
 from .code_executor import code_executor
 from .feature_implementer import feature_implementer
+from .codex_service import codex_service
 
 
 # Phase 5: Authentication Views
@@ -482,10 +483,6 @@ def implement_feature(request):
             print(f"📋 Implementation Plan (first 200 chars):")
             print(feature.implementation_plan[:200])
             
-            # For now, generate code preview without applying
-            # This is Phase 4 Part 1 - code generation and preview
-            # Part 2 will handle actual application of changes
-            
             # Parse implementation plan
             try:
                 plan_data = json.loads(feature.implementation_plan)
@@ -499,54 +496,102 @@ def implement_feature(request):
                     'error': 'Invalid implementation plan format'
                 }, status=400)
             
-            generated_files = []
+            # --- NEW: Codex-based implementation ---
+            generated_files = None
+            engine_used = 'legacy'
             
-            
-            max_files_to_process = 5
-            for file_path in files_to_modify[:max_files_to_process]:
-                print(f"📝 Generating code for {file_path}...")
+            if codex_service.is_available():
+                print("🤖 Using Codex CLI for implementation...")
                 
-                # Read existing file content using feature_implementer's safe method
-                file_info = feature_implementer.read_file_safely(file_path)
-                existing_code = None
-                
-                if file_info['exists']:
-                    if file_info['content']:
-                        existing_code = file_info['content']
-                        print(f"✅ File exists, read {len(existing_code)} characters")
-                    else:
-                        print(f"⚠️  File exists but couldn't read: {file_info['error']}")
-                else:
-                    print(f"ℹ️  File does not exist, will generate new file")
-                
-                # Generate code with existing context
-                result = feature_implementer.generate_code(
-                    feature.description,
-                    feature.implementation_plan,
-                    file_path,
-                    existing_code=existing_code
+                # Snapshot files before Codex edits them
+                snapshots_before = codex_service._snapshot_files(
+                    codex_service.project_dir, files_to_modify
                 )
                 
-                if result.get('success'):
-                    generated_files.append({
-                        'file': file_path,
-                        'code': result.get('code', ''),
-                        'changes': result.get('changes_made', []),
-                        'notes': result.get('notes', '')
-                    })
+                codex_result = codex_service.implement(
+                    feature_description=feature.description,
+                    implementation_plan=feature.implementation_plan,
+                    files_to_modify=files_to_modify
+                )
+                
+                if codex_result['success'] and codex_result['files_changed']:
+                    generated_files = codex_result['files_changed']
+                    engine_used = 'codex'
+                    
+                    # Revert Codex's disk changes (restore snapshots)
+                    # so the approve/reject workflow stays intact
+                    for rel_path, original_content in snapshots_before.items():
+                        full_path = codex_service.project_dir / rel_path
+                        if original_content is not None:
+                            try:
+                                full_path.write_text(original_content, encoding='utf-8')
+                            except Exception as e:
+                                print(f"⚠️ Warning: Failed to revert {rel_path}: {e}")
+                    
+                    print(f"✅ Codex generated changes for {len(generated_files)} file(s)")
+                    if codex_result.get('summary'):
+                        print(f"📝 Codex summary: {codex_result['summary'][:200]}")
+                    if codex_result.get('token_usage'):
+                        usage = codex_result['token_usage']
+                        print(f"📊 Tokens: {usage.get('input_tokens',0)} in, "
+                              f"{usage.get('output_tokens',0)} out")
+                else:
+                    # Codex failed — fall through to legacy pipeline
+                    print(f"⚠️ Codex failed: {codex_result.get('error')}")
+                    print("⬇️ Falling back to legacy per-file generation...")
+            else:
+                print("⚠️ Codex not available, using legacy pipeline")
+            
+            # --- FALLBACK: Legacy per-file generation ---
+            if generated_files is None:
+                generated_files = []
+                max_files_to_process = 5
+                for file_path in files_to_modify[:max_files_to_process]:
+                    print(f"📝 Generating code for {file_path}...")
+                    
+                    # Read existing file content using feature_implementer's safe method
+                    file_info = feature_implementer.read_file_safely(file_path)
+                    existing_code = None
+                    
+                    if file_info['exists']:
+                        if file_info['content']:
+                            existing_code = file_info['content']
+                            print(f"✅ File exists, read {len(existing_code)} characters")
+                        else:
+                            print(f"⚠️  File exists but couldn't read: {file_info['error']}")
+                    else:
+                        print(f"ℹ️  File does not exist, will generate new file")
+                    
+                    # Generate code with existing context
+                    result = feature_implementer.generate_code(
+                        feature.description,
+                        feature.implementation_plan,
+                        file_path,
+                        existing_code=existing_code
+                    )
+                    
+                    if result.get('success'):
+                        generated_files.append({
+                            'file': file_path,
+                            'code': result.get('code', ''),
+                            'changes': result.get('changes_made', []),
+                            'notes': result.get('notes', '')
+                        })
             
             feature.generated_code = json.dumps(generated_files)
             feature.files_modified = [f['file'] for f in generated_files]
             feature.status = 'processing'
+            feature.implementation_engine = engine_used
             feature.save()
             
-            print(f"✅ Code generated for {len(generated_files)} file(s)")
+            print(f"✅ Code generated for {len(generated_files)} file(s) using {engine_used} engine")
             
             return JsonResponse({
                 'status': 'success',
                 'message': 'Code generated successfully',
                 'generated_files': generated_files,
-                'feature_id': feature.id
+                'feature_id': feature.id,
+                'engine': engine_used
             })
             
         except Exception as e:

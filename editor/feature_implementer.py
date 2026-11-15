@@ -227,6 +227,12 @@ Respond in JSON format:
     def generate_code(self, feature_description: str, implementation_plan: str, 
                      target_file: str, existing_code: str = None) -> Dict[str, Any]:
         """
+        [DEPRECATED — Phase 6] Single-file code generation via OpenAI chat completion.
+        
+        This method generates code for ONE file at a time with no cross-file context.
+        It is retained as a fallback when Codex CLI is not available.
+        Prefer codex_service.implement() for multi-file, context-aware generation.
+        
         Generate code for a specific file based on the feature request.
         
         Args:
